@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import { Balloon } from '../Utils/Balloon';
 
 export class Metadata{
 
@@ -21,7 +20,11 @@ export class Metadata{
 
     
     public static getMetadata(context: vscode.ExtensionContext, uri: string) {
-        // uri를 통해 hash 값 가져오기 
+        // uri를 통해 hash 값 가져오는 로직 필요 
+
+
+
+
         // - pathToHash 의 접근 방식 미정으로 예시 hash 파일 설정
         const hash = "9f8641056d4e2eb03830f3c1bbb6c71ca6e820f6da94bf7055b132b8d2e6a2b5"
         const metaUri =

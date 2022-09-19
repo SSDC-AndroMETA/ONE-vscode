@@ -283,7 +283,7 @@
         },
         {
           "command": "one.metadata.showMetadataViewer",
-          "when": "view == OneExplorerView && resourceExtname in metadata.supportedFiles && viewItem != directory",
+          "when": "view == OneExplorerView && viewItem =~ /baseModel|product/",
           "group": "7_metadata@1"
         }
       ],

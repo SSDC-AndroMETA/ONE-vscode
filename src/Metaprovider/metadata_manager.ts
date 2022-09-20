@@ -47,17 +47,14 @@ export class Metadata{
 
         // - pathToHash 의 접근 방식 미정으로 예시 hash 파일 설정
         const hash = "9f8641056d4e2eb03830f3c1bbb6c71ca6e820f6da94bf7055b132b8d2e6a2b5"
-        const metaUri =
-            vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, `.meta/hash_objects/${hash.substring(0, 2)}/${hash.substring(2)}.json`);
         
-        
-        vscode.workspace.fs.readFile(metaUri).then((success) => {
-            
-            let metadata = Buffer.from(success).toString();  
-            console.log(JSON.parse(metadata));
-            return metadata;
-        }); 
+        return this.hashToMetadata(hash)
 
+    }
+
+    public static async hashToMetadata (hash: string) {
+        const metaUri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, `.meta/hash_objects/${hash.substring(0, 2)}/${hash.substring(2)}.json`);
+        return  JSON.parse(Buffer.from(await vscode.workspace.fs.readFile(metaUri)).toString())
     }
 
     public static async getRelation(context: vscode.ExtensionContext, uri: string) {
@@ -79,8 +76,7 @@ export class Metadata{
 
         // 현재 노드 메타데이터 불러오기
 
-        const metaUri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, `.meta/hash_objects/${nowHash.substring(0, 2)}/${nowHash.substring(2)}.json`);
-        let nowMetadata: JSON = JSON.parse(Buffer.from(await vscode.workspace.fs.readFile(metaUri)).toString())
+        let nowMetadata: JSON = this.hashToMetadata(nowHash);
 
         console.log(nowMetadata)
 
@@ -108,18 +104,35 @@ export class Metadata{
 
         // 부모 노드 찾기
         let tempHash = relationJSON[nowHash].parent
-        // while (true) {
+        while (true) {
 
-        //     if (tempHash == "") {
-        //         break;
-        //     }
-        // }
+            if (tempHash == "") {
+                break;
+            }
+            else {
+                let dataList: Data[] =[]
+                let keys = Object.keys(nowMetadata)
+                for (let i = 0; i < keys.length; i++){
+                    let element = nowMetadata[keys[i]]
+                    let data: Data = {
+                        "path": element.path,
+                        "name": element.name,
+                        "onecc_version": element.onecc_version,
+                        "toolchain_version": element.toolchain_version
+                    }
+        
+                    dataList.push(data);
+                }
+            }
+        }
 
         // 자식 노드 찾기
 
-
+        
 
     }
+
+    
 }
 
 

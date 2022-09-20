@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import path from 'path';
 import {Node} from '../OneExplorer/OneExplorer';
 import {Balloon} from '../Utils/Balloon';
 import {getNonce} from '../Utils/external/Nonce';
@@ -7,6 +6,8 @@ import {getUri} from '../Utils/external/Uri';
 
 //현재 실행되고있는 패널정보('uri':panel 객체)
 let currentPanelsInfo = {} as any;
+//워크스페이스폴더 이름
+let workspaceFolderName = "";
 
 export class RelationViewerPanel {
   public static readonly viewType = 'one.viewer.relation';
@@ -38,8 +39,9 @@ export class RelationViewerPanel {
         async deserializeWebviewPanel(webviewPanel: vscode.WebviewPanel, state: any) {
           // Reset the webview options so we use latest uri for `localResourceRoots`.
           webviewPanel.webview.options = RelationViewerPanel.getWebviewOptions(context.extensionUri);
+          workspaceFolderName = state.workspaceFolderName;
+          RelationViewerPanel.revive(context, state.fileUri, webviewPanel,state.relativePath);
           
-          RelationViewerPanel.revive(context, state.fileUri, webviewPanel);
         }
       });
     }
@@ -49,7 +51,7 @@ export class RelationViewerPanel {
     });
   }
 
-  public static async revive(context: vscode.ExtensionContext, fileUri: string, panel:vscode.WebviewPanel) {
+  public static async revive(context: vscode.ExtensionContext, fileUri: string, panel:vscode.WebviewPanel, relativePath:string) {
     console.log('vscode_재시작_복구용_파일path:',fileUri);
 
     //만약 복구할려고 했으나 이미 해당 패널이 열려있을 경우.
@@ -64,7 +66,7 @@ export class RelationViewerPanel {
     //복구하고 난뒤 해당 패널에 dispose 등록
     new RelationViewerPanel(panel,fileUri);
     // 그 후 해당 패널에 webview를 그린다.
-    await this._getHtmlForWebview(context,panel,fileUri);
+    await this._getHtmlForWebview(context,panel,fileUri,relativePath);
 	}
 
   private static getWebviewOptions(extensionUri: vscode.Uri): vscode.WebviewOptions & vscode.WebviewPanelOptions {
@@ -79,12 +81,16 @@ export class RelationViewerPanel {
     let originPath = "";
     console.log(uri);
     if (uri instanceof vscode.Uri) {
-      relativePath = uri.fsPath;
       originPath = uri.fsPath;
     } else if (uri instanceof Node) {
-      relativePath = uri.path;
       originPath = uri.path;
     }
+    
+    if(vscode.workspace.workspaceFolders){
+      workspaceFolderName = vscode.workspace.workspaceFolders[0].name;
+    }
+    //상대경로를 워크스페이스 기준으로 처리
+    relativePath = vscode.workspace.asRelativePath(originPath);
 
     //이미 켜져있는 패널이 있다면 해당 패널을 보여준다.
     if(currentPanelsInfo[originPath]){
@@ -95,20 +101,12 @@ export class RelationViewerPanel {
     if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
       const workspacePath = vscode.workspace.workspaceFolders[0].uri.fsPath.toString();
       
-      if (relativePath.length <= workspacePath.length) {
+      if (originPath.length <= workspacePath.length) {
         // TODO 로그쓰기
         Balloon.error("Invalid Path", false);
         return;
       }
       
-      
-      // TODO: 뭔가 예외상황 있을 듯
-      // relativePath = '.' + relativePath.substring(workspacePath.length);
-      relativePath = relativePath.replace(workspacePath, '.');
-      
-      if (relativePath[0] !== '.') {
-        // 예외처리
-      }
     }
 
     // Create and show a new webview
@@ -123,7 +121,7 @@ export class RelationViewerPanel {
     );
 
     //현재 패널에 webview를 그린다.
-    RelationViewerPanel._getHtmlForWebview(context,panel,originPath);
+    RelationViewerPanel._getHtmlForWebview(context,panel,originPath,relativePath);
 
     //Panel 객체를 생성하여 해당 패널의 dispose 메서드를 등록
     new RelationViewerPanel(panel,originPath);
@@ -136,9 +134,10 @@ export class RelationViewerPanel {
     // Listen for when the panel is disposed
 		// This happens when the user closes the panel or when the panel is closed programmatically
 		panel.onDidDispose(() => this.dispose(fileUri), null, this._disposables);
+
   }
 
-  private static async _getHtmlForWebview(context: vscode.ExtensionContext, panel:vscode.WebviewPanel, originPath:string){
+  private static async _getHtmlForWebview(context: vscode.ExtensionContext, panel:vscode.WebviewPanel, originPath:string, relativePath:string){
     
     //현재 패널의 정보를 기록해놓는다.
     currentPanelsInfo[originPath] = panel;
@@ -188,15 +187,14 @@ export class RelationViewerPanel {
     // relation 데이터를 웹뷰로 메세지를 보낸다.
     payload = getRelationData(originPath);
     panel.webview.postMessage(
-      {type:'create',payload: payload,fileUri: originPath }
+      {type:'create',payload: payload,fileUri: originPath, relativePath:relativePath, workspaceFolderName:workspaceFolderName }
     );
 
     // 업데이트 요청시 새로운 relation 데이터 전송
     panel.webview.onDidReceiveMessage((message) => {
-      console.log(message.path);
       payload = getRelationData(message.path);
       panel.webview.postMessage(
-        { type:'update', payload: payload, fileUri: message.path }
+        { type:'update', payload: payload, fileUri: message.path, relativePath:relativePath, workspaceFolderName:message.workspaceFolderName }
       );
     });
   }
@@ -212,7 +210,7 @@ export class RelationViewerPanel {
 
 		// Clean up our resources
 		this._panel.dispose();
-
+    
 		while (this._disposables.length) {
 			const x = this._disposables.pop();
 			if (x) {

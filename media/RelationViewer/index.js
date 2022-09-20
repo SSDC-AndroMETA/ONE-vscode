@@ -27,22 +27,30 @@ document.addEventListener('contextmenu', event => event.preventDefault());
 
 const vscode = acquireVsCodeApi();
 
+//현재 파일의 Uri 
+let currentFileUri = "";
+
+//현재 파일의 워크스페이스 주소
+let workspaceFolderName = "";
+
 window.addEventListener('message',(event) => {
   const message = event.data;
   const { selected, relationData } = message.payload;
   
   switch (message.type) {
     case 'create':
-      currentFileUri = message.fileUri;
+      currentFileUri = message.relativePath;
+      workspaceFolderName = message.workspaceFolderName;
       detachTree();
       attachTree(relationData);
-      console.log('메시지는: ', message);
-      vscode.setState({fileUri:message.fileUri});
+      console.log('create 메시지는: ', message);
+      vscode.setState({fileUri:message.fileUri,relativePath:message.relativePath,workspaceFolderName:message.workspaceFolderName});
       break;
     case 'update':
-      console.log('메시지는: ', message);
+      console.log('update 메시지는: ', message);
       detachTree();
       attachTree(relationData);
+      vscode.setState({fileUri:message.fileUri,relativePath:message.relativePath});
       break;
     default:
       break;
@@ -53,8 +61,8 @@ function attachTree(relationData) {
   
   //현재 파일 절대 경로 보여주기
   currentFileUri = currentFileUri.replace(/\//gi," > ");
-  currentFileUri = currentFileUri.replace('>',"");
-  document.getElementById('nav-bar-content-box').innerText =`${currentFileUri}` ;
+  
+  document.getElementById('nav-bar-content-box').innerText =`${workspaceFolderName} > ${currentFileUri}` ;
   
   //  assigns the data to a hierarchy using parent-child relationships
   const treeData = d3.stratify()
@@ -145,14 +153,13 @@ function attachTree(relationData) {
     .attr("dy", ".35em")
     .attr("y", -rectSizeHeight)
     .style("text-anchor", "middle")
-    .text(d => d.data.name)
+    .text(d => d.data.dataList[d.data.idx].name)
     .on('mouseover', (mouse, node) => {
       hoverText.style.visibility = 'visible';
       hoverText.innerText = "/home/jihongyu/ONE-vscode/res/modelDir/truediv/model.q8.circle.log";
       hoverText.style.left = `${node.x}px`;
       hoverText.style.top = `${mouse.path[0].getBoundingClientRect().top - 25}px`;
-      console.log(node)
-      console.log(mouse.path[0].getBoundingClientRect())
+      
     }).on('mouseout', (mouse, node) => {
       hoverText.style.visibility = 'hidden';
     });
@@ -162,7 +169,7 @@ function attachTree(relationData) {
   .attr("dy", ".35em")
   .attr("y", -rectSizeHeight + 30)
   .style("text-anchor", "middle")
-  .text(d => d.data.path)
+  .text(d => d.data.dataList[d.data.idx].name)
   .on("dblclick", (p,d) => {
     if (waitForDouble !== null) {
       clearTimeout(waitForDouble);

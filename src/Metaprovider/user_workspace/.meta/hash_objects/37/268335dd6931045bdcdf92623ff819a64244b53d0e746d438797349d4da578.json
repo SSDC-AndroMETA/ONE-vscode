@@ -1,6 +1,7 @@
 {
-    "./res/samples_metadatateam/while_000.circle" : {
-        "file_extension" : "circle",
+    "test_onnx.log" : {
+        "name" : "test_onnx.log",
+        "file_extension" : "log",
         "create_time" : "생성 시각(date)",
         "modified_time" : "수정 시각(date)",
         "deleted_time" : "삭제 시각(date)",

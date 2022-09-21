@@ -21,6 +21,10 @@ body {
   height: 100vh;
 }
 
+svg {
+  margin-top: 20px;
+}
+
 .node circle {
     fill: #fff;
     stroke: steelblue;
@@ -61,7 +65,6 @@ body {
 }
 
 .relation-box{
-  height: 100%;
   width: 100%;
   /* 약간 오른쪽으로 치운것 같아 왼쪽으로 이동 */
   /* margin-left: -50px;  */

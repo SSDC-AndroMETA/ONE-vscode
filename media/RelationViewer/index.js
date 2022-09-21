@@ -39,18 +39,17 @@ window.addEventListener('message',(event) => {
   
   switch (message.type) {
     case 'create':
-      currentFileUri = message.relativePath;
+      currentFileUri = message.fileUri.path;
+      console.log(message.fileUri.path);
       workspaceFolderName = message.workspaceFolderName;
       detachTree();
       attachTree(relationData);
       console.log('create 메시지는: ', message);
-      vscode.setState({fileUri:message.fileUri,relativePath:message.relativePath,workspaceFolderName:message.workspaceFolderName});
       break;
     case 'update':
       console.log('update 메시지는: ', message);
       detachTree();
       attachTree(relationData);
-      vscode.setState({fileUri:message.fileUri,relativePath:message.relativePath});
       break;
     default:
       break;
@@ -60,9 +59,8 @@ window.addEventListener('message',(event) => {
 function attachTree(relationData) {
   
   //현재 파일 절대 경로 보여주기
-  currentFileUri = currentFileUri.replace(/\//gi," > ");
-  
-  document.getElementById('nav-bar-content-box').innerText =`${workspaceFolderName} > ${currentFileUri}` ;
+  //currentFileUri = String(currentFileUri).replace(/\//gi," > ");
+  //document.getElementById('nav-bar-content-box').innerText =`${currentFileUri}` ;
   
   //  assigns the data to a hierarchy using parent-child relationships
   const treeData = d3.stratify()
@@ -184,7 +182,7 @@ function attachTree(relationData) {
       waitForDouble = setTimeout(() => {
         console.log('원 클릭입니다.');
         waitForDouble = null;
-      }, 200);
+      }, 400);
     }
   });
 }

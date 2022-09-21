@@ -20,10 +20,11 @@ import * as fs from 'fs';
 // import {TextEncoder} from 'util';
 import * as vscode from 'vscode';
 
-// import {CfgEditorPanel} from '../CfgEditor/CfgEditorPanel';
+import { Metadata } from './metadata_manager';
 import { Balloon } from '../Utils/Balloon';
 import { obtainWorkspaceRoot } from '../Utils/Helpers';
 import { Logger } from '../Utils/Logger';
+
 
 // import {ArtifactAttr} from './ArtifactLocator';
 // import {OneStorage} from './OneStorage';
@@ -61,18 +62,28 @@ export class MetadataEventManager {
     // let uri = vscode.Uri.file("/home/pjt01/Workspace/Test_space/a.log") //string to vscode.Uri(type)
     // let path = uri.fsPath; // file:///home/pjt01/Workspace/Test_space/a.log // vscode.Uri(type) to string 
     let registrations = [
-      provider.fileWatcher.onDidCreate(uri => {
+      provider.fileWatcher.onDidCreate(async uri => {
         console.log(uri); provider.refresh('Create'); // test code
         // case 1. Contents change event (when uri already in pathToHash)
         // case 2. Baseline event (when create file in file system or copy from external source)
         // case 3. Rename or Move File (processing like case 1 or ignore)
         // case 4. Generate Product from ONE (processing like case 1 or ignore)
+        if (uri.fsPath.endsWith('a.log')){
+          let path='a.log';
+          console.log(1);
+          let hash=await Metadata.contentHash(path);
+          console.log(hash);
+          let content=await Metadata.getMetadata(hash);
+          console.log(content);
+          content['b.log']="Test";
+          await Metadata.setMetadata(hash, content);
+        }
       }),
       provider.fileWatcher.onDidChange(uri => {
         console.log(uri); provider.refresh('Change'); // test code
         // case 1. Contents change event only > command event
       }),
-      provider.fileWatcher.onDidDelete(uri => {
+      provider.fileWatcher.onDidDelete(uri => { // To Semi Jeong
         console.log(uri); provider.refresh('Delete'); // test code
         // case 1. Delete file (Metadata deactivate or ignore)  > command event
       }),
@@ -109,12 +120,4 @@ export class MetadataEventManager {
     let ends=['.pb','.onnx','.tflite','.circle','.cfg','.log'];
     return ends.some((x)=>path.endsWith(x));
   }
-}
-
-export class Metadata {
-  public static register(path: vscode.Uri) {}
-}
-
-export class PathToHash {
-  public static register(path: vscode.Uri) {}
 }

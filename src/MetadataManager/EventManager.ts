@@ -20,7 +20,7 @@ import * as fs from 'fs';
 // import {TextEncoder} from 'util';
 import * as vscode from 'vscode';
 
-import { Metadata } from './metadata_manager';
+import { Metadata } from './metadataAPI';
 import { Balloon } from '../Utils/Balloon';
 import { obtainWorkspaceRoot } from '../Utils/Helpers';
 import { Logger } from '../Utils/Logger';

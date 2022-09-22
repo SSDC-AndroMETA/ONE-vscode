@@ -1,0 +1,13 @@
+{
+    "1": {
+        
+    },
+    "2" : {
+        "3" : {
+            "testest.circle" : "hash"
+        },
+
+        "test1.tflite": "hash"
+    },
+    "model.tflite" : "hash"
+}

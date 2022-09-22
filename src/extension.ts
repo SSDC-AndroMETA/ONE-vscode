@@ -28,6 +28,7 @@ import {PartGraphSelPanel} from './PartEditor/PartGraphSelector';
 import { ToolchainProvider } from './Toolchain/ToolchainProvider';
 import { Metadata } from './MetadataManager/metadataAPI';
 import {Logger} from './Utils/Logger';
+import { PathToHash } from './MetadataManager/pathToHash';
 
 /* istanbul ignore next */
 export function activate(context: vscode.ExtensionContext) {
@@ -66,6 +67,9 @@ export function activate(context: vscode.ExtensionContext) {
   CircleViewerProvider.register(context);
 
   Metadata.register(context);
+
+  let p1 = PathToHash.getPathToHash().pathToHash;
+
 
   // returning backend registration function that will be called by backend extensions
   return backendRegistrationApi();

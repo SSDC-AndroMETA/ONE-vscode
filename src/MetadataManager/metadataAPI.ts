@@ -2,8 +2,7 @@ import * as vscode from 'vscode';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import { obtainWorkspaceRoot } from '../Utils/Helpers';
-import { MetadataEventManager } from './EventManager';
-
+import { PathToHash } from './pathToHash';
 interface Relation{
     "selected": string,
     "relationData": Node[]
@@ -12,7 +11,7 @@ interface Relation{
 interface Node{
     "id": string,
     "parent": string,
-    "represent": number,
+    "representIdx": number,
     "dataList": Data[]
 }
 
@@ -23,46 +22,31 @@ interface Data{
     "toolchain_version"?: string
 }
 
-export class Metadata {
+export class Metadata{
     private _disposables: vscode.Disposable[] = [];
     constructor() { }
+    public static register(context: vscode.ExtensionContext): void {
+        const registrations = [
+            vscode.commands.registerCommand('one.metadata.showMetadata', async () => {
 
-    // public static register(context: vscode.ExtensionContext): void {
-    //     const registrations = [
-    //         vscode.commands.registerCommand('one.metadata.showMetadata', async () => {
+                const testPath: string = "2/3/testest.circle"; // workspace 기준 실제 파일 위치
+                await Metadata.getFileInfo(testPath);
+                // await Metadata.getRelationInfo(testPath);
+            })
+        ]
 
-    //             const testPath :string = "./model.tflite" // workspace 기준 실제 파일 위치
-    //             // await Metadata.getFileInfo(context, testPath);
-    //             await Metadata.getRelationInfo(testPath);
-    //         })
-    //     ]
-
-    //     registrations.forEach(disposable => {
-    //         context.subscriptions.push(disposable);
-    //     });
-    // }
+        registrations.forEach(disposable => {
+            context.subscriptions.push(disposable);
+        });
+    }
 
     //get metadata of file by path
     public static async getFileInfo(path: string) {
-        const hash = await this.contentHash(path);
-        let metadata = await this.getMetadata(hash)
-        console.log(metadata)
+        const instance = await PathToHash.getInstance();
+        const hash = instance.getPathToHash(path);
+        let metadata = await this.getMetadata(hash);
         return metadata[path];
     }
-
-    //generate Hash from file
-    public static async contentHash(path: string) {
-        let workspaceroot = obtainWorkspaceRoot();
-        let Uri = vscode.Uri.joinPath(vscode.Uri.file(workspaceroot), path);
-        if (!fs.realpathSync(Uri.fsPath)) {
-            console.log(`file ${Uri} doesn't exist`);
-        }
-        let hash = crypto.createHash('sha256').update(Buffer.from(await vscode.workspace.fs.readFile(Uri)).toString()).digest('hex');
-        console.log(hash);
-        return hash;
-    }
-
-    
 
     // deactivate metadata
     public static async disableMetadata(pathOrUri: string|vscode.Uri) {
@@ -136,69 +120,70 @@ export class Metadata {
     }
 
     //get metadata of file by path
-    // public static async getRelationInfo(path: string)  {
-    //     const nowHash = await this.contentHash(path);
-    //     if (vscode.workspace.workspaceFolders === undefined) return
+    public static async getRelationInfo(path: string) {
+        const instance = await PathToHash.getInstance();
+        const nowHash = instance.getPathToHash(path);
+        if (vscode.workspace.workspaceFolders === undefined) return;
 
-    //     let relationUri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri,".meta/relation.json")
-    //     let relationJSON: JSON = JSON.parse(Buffer.from(await vscode.workspace.fs.readFile(relationUri)).toString())
+        let relationUri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, ".meta/relation.json");
+        let relationJSON: JSON = JSON.parse(Buffer.from(await vscode.workspace.fs.readFile(relationUri)).toString());
         
-    //     // 반환 객체 생성
-    //     let relations: Relation = {
-    //         "selected" :  "",
-    //         "relationData" : []
-    //     }
+        // 반환 객체 생성
+        let relations: Relation = {
+            "selected" :  "",
+            "relationData" : []
+        }
 
-    //     // 현재 노드 메타데이터 불러오기
+        // 현재 노드 메타데이터 불러오기
 
-    //     let nowMetadata: JSON = await this.getMetadata(nowHash)
+        let nowMetadata: JSON = await this.getMetadata(nowHash)
 
-    //     relations.selected = nowHash
+        relations.selected = nowHash
 
-    //     relations.relationData.push({ "id": nowHash, "parent": relationJSON[nowHash].parent, "represent": 0, "dataList": this.getDataList(nowMetadata) })
-        
+        relations.relationData.push({ "id": nowHash, "parent": relationJSON[nowHash].parent, "representIdx": 0, "dataList": this.getDataList(nowMetadata) })
+       
     
-    //     // 부모 노드 찾기
-    //     let tempHash: string = relationJSON[nowHash].parent
-    //     while (true) {
+        // 부모 노드 찾기
+        let tempHash: string = relationJSON[nowHash].parent
+        while (true) {
             
-    //         if (!tempHash) {
-    //             break;
-    //         }
-    //         else {
+            if (!tempHash) {
+                break;
+            }
+            else {
 
-    //             let tempMetadata: JSON = await this.getMetadata(tempHash)
+                let tempMetadata: JSON = await this.getMetadata(tempHash)
                 
-    //             relations.relationData.push({ "id": tempHash, "parent": relationJSON[tempHash].parent, "represent": 0, "dataList": this.getDataList(tempMetadata) })
-    //             tempHash = relationJSON[tempHash].parent
-    //         }
-    //     }
+                relations.relationData.push({ "id": tempHash, "parent": relationJSON[tempHash].parent, "representIdx": 0, "dataList": this.getDataList(tempMetadata) })
+                tempHash = relationJSON[tempHash].parent
+            }
+        }
 
-    //     // 자식 노드 찾기
-    //     let tempHashs: [] = relationJSON[nowHash].children
-    //     while (true) {
-    //         let hashs:[] = []
-    //         if (tempHashs.length===0) {
-    //             break;
-    //         }
-    //         else {
+        // 자식 노드 찾기
+        let tempHashs: [] = relationJSON[nowHash].children
+        while (true) {
+            let hashs:[] = []
+            if (tempHashs.length===0) {
+                break;
+            }
+            else {
                 
-    //             for (let i = 0; i < tempHashs.length; i++){
-    //                 let tempMetadata: JSON = await this.getMetadata(tempHashs[i])
+                for (let i = 0; i < tempHashs.length; i++){
+                    let tempMetadata: JSON = await this.getMetadata(tempHashs[i])
                     
-    //                 relations.relationData.push({ "id": tempHashs[i], "parent": relationJSON[tempHashs[i]].parent, "represent": 0, "dataList": this.getDataList(tempMetadata) })
-    //                 hashs.push(...relationJSON[tempHashs[i]].children)
-    //             }
+                    relations.relationData.push({ "id": tempHashs[i], "parent": relationJSON[tempHashs[i]].parent, "represent": 0, "dataList": this.getDataList(tempMetadata) })
+                    hashs.push(...relationJSON[tempHashs[i]].children)
+                }
                 
-    //             tempHashs = hashs
-    //         }
-    //     }
+                tempHashs = hashs
+            }
+        }
 
-    //     console.log(relations)
+        console.log(relations)
         
-    //     return relations
+        return relations
 
-    // }
+    }
 
     //get all Metadata of same hash object by hash
     public static async getMetadata(hash: string) {
@@ -217,24 +202,25 @@ export class Metadata {
         }
     }
 
-    // public static getDataList(metadata: JSON) {
-    //     let dataList: Data[] = []
+    public static getDataList(metadata: JSON) {
+        let dataList: Data[] = [];
         
-    //     let keys = Object.keys(metadata)
-    //     for (let i = 0; i < keys.length; i++){
-    //         let element = metadata[keys[i]]
-    //         let data: Data = {
-    //             "path": keys[i],
-    //             "name": element.name,
-    //             "onecc_version": element.onecc_version,
-    //             "toolchain_version": element.toolchain_version
-    //         }
+        let keys = Object.keys(metadata);
+        for (let i = 0; i < keys.length; i++){
+            let element = metadata[keys[i]];
+            let data: Data = {
+                "path": keys[i],
+                "name": element.name,
+                "onecc_version": element.onecc_version,
+                "toolchain_version": element.toolchain_version
+            }
 
-    //         dataList.push(data);
-    //     }
+            dataList.push(data);
+        }
 
-    //     return dataList
-    // }
+        return dataList
+    }
+
 
     // dummy functions
     public static d_isDir(path: string) {
@@ -252,7 +238,7 @@ export class Metadata {
     }
 
     public static async d_pathToHash(relativePath: string) {
-        return await Metadata.contentHash("while_000.log");
+        return await Metadata.contentHash("while_000.log");/////////////////////////////////////////////////////////////To Semi : contentHash is removed
     }
 }
 

@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import * as crypto from 'crypto';
+import * as fs from 'fs';
 import { obtainWorkspaceRoot } from '../Utils/Helpers';
+import { MetadataEventManager } from './EventManager';
 
 interface Relation{
     "selected": string,
@@ -21,14 +23,14 @@ interface Data{
     "toolchain_version"?: string
 }
 
-export class Metadata{
+export class Metadata {
     private _disposables: vscode.Disposable[] = [];
     constructor() { }
     public static register(context: vscode.ExtensionContext): void {
         const registrations = [
             vscode.commands.registerCommand('one.metadata.showMetadata', async () => {
 
-                const testPath :string = "./model.tflite" // workspace 기준 실제 파일 위치
+                const testPath: string = "./model.tflite" // workspace 기준 실제 파일 위치
                 // await Metadata.getFileInfo(context, testPath);
                 await Metadata.getRelationInfo(testPath);
             })
@@ -49,11 +51,87 @@ export class Metadata{
 
     //generate Hash from file
     public static async contentHash(path: string) {
-        let workspaceroot=obtainWorkspaceRoot();
-        let Uri = vscode.Uri.joinPath(vscode.Uri.file(workspaceroot),path);
+        let workspaceroot = obtainWorkspaceRoot();
+        let Uri = vscode.Uri.joinPath(vscode.Uri.file(workspaceroot), path);
+        if (!fs.realpathSync(Uri.fsPath)) {
+            console.log(`file ${Uri} doesn't exist`);
+        }
         let hash = crypto.createHash('sha256').update(Buffer.from(await vscode.workspace.fs.readFile(Uri)).toString()).digest('hex');
         console.log(hash);
         return hash;
+    }
+
+    
+
+    // deactivate metadata
+    public static async disableMetadata(pathOrUri: string|vscode.Uri) {
+        // step 1. Get hash value from pathToHash
+        // TODO: Get hash value from pathToHash
+        const relativePath = typeof(pathOrUri) === 'string' ? pathOrUri : vscode.workspace.asRelativePath(pathOrUri);
+        const hash = await Metadata.d_pathToHash(relativePath);
+        // step 2. Find hash object with hash value
+        const metadata = await Metadata.getMetadata(hash);
+        // step 3. Check if the hash object has the deleted uri
+        if(metadata) {
+            const data = metadata[relativePath];
+            if(data) {
+                // step 4. If exists, deactivate (set deleted_time) that path.
+                // FIXME: Do we need to deactivate it from pathToHash too? > If we deactivate pathToHash, if rename event came, we cannot specify what hash value the path is for.
+                metadata[relativePath]["deleted_time"] = new Date();
+                Metadata.setMetadata(hash, metadata);
+            }
+        }
+    }
+
+    // deactivate all metadata under the folder
+    public static async disableMetadataUnderFolder(folderPath: string) {
+        // if it is a folder, deactivate all of its child files
+        Metadata.d_getFilesUnderDir(folderPath)?.forEach(f => {
+            // NOTE: f should be a relative path here, but can be changed
+            // FIXME: Do we need to use await keyword below?
+            if (Metadata.d_isDir(f)) {
+                Metadata.disableMetadataUnderFolder(f);
+            } else {
+                Metadata.disableMetadata(f);
+            }
+          });
+    }
+
+    public static async moveMetadata(oldPath: string, newPath: string) {
+        const oldRelativePath = vscode.workspace.asRelativePath(oldPath);
+        const newRelativePath = vscode.workspace.asRelativePath(newPath);
+        // 1. Get hash from pathToHash
+        // TODO: implement dummy function
+        const hash = await Metadata.d_pathToHash(oldRelativePath);
+        // 2. Get metadata
+        const metadata = await Metadata.getMetadata(hash);
+        const data = metadata[oldRelativePath];
+        // 3. Move metadata
+        delete metadata[oldRelativePath];
+        metadata[newRelativePath] = data;
+        Metadata.setMetadata(hash, metadata);
+    }
+
+    /**
+     * Move metadata of the files and folders under the oldPath folder to the newPath folder
+     * @param fromPath A absolute path string based on workspace (without workspace folder)
+     * @param toPath A absolute path string based on workspace (without workspace folder)
+     */
+    public static async moveMetadataUnderFolder(fromPath: string, toPath: string) {
+        const relativeToPath = vscode.workspace.asRelativePath(toPath);
+        // const oldRelativePath = vscode.workspace.asRelativePath(oldPath);
+        vscode.workspace.findFiles(`${relativeToPath}/**/*`).then(files => {
+            files.forEach(file => {
+                const fileToPath = file.path;
+                const fileFromPath = fromPath + fileToPath.substring(fileToPath.lastIndexOf(toPath) + toPath.length);
+                console.log('moveMetadataUnderFolder::', fileFromPath);
+                if (Metadata.d_isDir(fileToPath)) {
+                    Metadata.moveMetadataUnderFolder(fileFromPath, fileToPath);
+                } else {
+                    Metadata.moveMetadata(fileFromPath, fileToPath);
+                }
+            });
+        });
     }
 
     //get metadata of file by path
@@ -155,6 +233,25 @@ export class Metadata{
         }
 
         return dataList
+    }
+
+    // dummy functions
+    public static d_isDir(path: string) {
+        const dotIdx = path.lastIndexOf('.');
+        const slashIdx = path.lastIndexOf('/');
+        return slashIdx === path.length - 1 || dotIdx === -1 || dotIdx <= slashIdx;
+    }
+
+    public static d_getFilesUnderDir(path: string): string[] {
+        if (Metadata.d_isDir(path)) {
+          // FIXME: what will be returned when we call?
+          return ['test/while_000.log', 'test/while_000 copy.log'];
+        }
+        return []; // 파일일 때
+    }
+
+    public static async d_pathToHash(relativePath: string) {
+        return await Metadata.contentHash("while_000.log");
     }
 }
 

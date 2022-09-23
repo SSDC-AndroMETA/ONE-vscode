@@ -32,11 +32,14 @@ import { Logger } from '../Utils/Logger';
 
 /* istanbul ignore next */
 export class MetadataEventManager {
-  private fileWatcher = vscode.workspace.createFileSystemWatcher(`**/*.{pb,onnx,tflite,circle,cfg,log}`); // glob pattern
+  private fileWatcher = vscode.workspace.createFileSystemWatcher(`**/*`); // glob pattern
   public static didHideExtra: boolean = false;
 
   public static oldUri: vscode.Uri | undefined = undefined;
   public static newUri: vscode.Uri | undefined = undefined;
+
+  public static createUri: vscode.Uri | undefined;
+  public static deleteUri: vscode.Uri | undefined = undefined;
 
   public static register(context: vscode.ExtensionContext) {
     let workspaceRoot: vscode.Uri | undefined = undefined;
@@ -58,34 +61,63 @@ export class MetadataEventManager {
     }
 
     const provider = new MetadataEventManager(workspaceRoot, context.extension.extensionKind);
-
     // let uri = vscode.Uri.file("/home/pjt01/Workspace/Test_space/a.log") //string to vscode.Uri(type)
-    // let path = uri.fsPath; // file:///home/pjt01/Workspace/Test_space/a.log // vscode.Uri(type) to string 
+    // let path = uri.fsPath; // file:///home/pjt01/Workspace/Test_space/a.log // vscode.Uri(type) to string
+    let timerId:NodeJS.Timeout | undefined=undefined;
     let registrations = [
       provider.fileWatcher.onDidCreate(async uri => {
-        console.log(uri); provider.refresh('Create'); // test code
-        // case 1. Contents change event (when uri already in pathToHash)
-        // case 2. Baseline event (when create file in file system or copy from external source)
-        // case 3. Rename or Move File (processing like case 1 or ignore)
-        // case 4. Generate Product from ONE (processing like case 1 or ignore)
-        if (uri.fsPath.endsWith('a.log')){
-          let path='a.log';
-          console.log(1);
-          let hash=await Metadata.contentHash(path);
-          console.log(hash);
-          let content=await Metadata.getMetadata(hash);
-          console.log(content);
-          content['b.log']="Test";
-          await Metadata.setMetadata(hash, content);
-        }
+        provider.refresh('Create'); // test code
+        console.log('onDidCreate  '+uri.fsPath);
+        MetadataEventManager.createUri=uri;
+        //if dir
+        // [case 5] > (1) call search > listup files > while [case4]
+        //else files
+        // validcheck(endswith)
+        // pathToHash search [case 1] > (1) call contentHash (2) change pathToHash (3) deactivate hash from pathToHash (4) insert hash from contentHash
+        // [case 4] > (1) call contentHash (2) getMetadata (3) compare to path(activate?) > Yes(ignore), No(Setup)
+        let temp=await vscode.workspace.findFiles('a.log/**');
+        console.log(temp);
+        timerId=setTimeout(()=>{MetadataEventManager.createUri=undefined; console.log('test  '+ MetadataEventManager.createUri);},0);
+        ////// case 1. [File] Contents change event (refer to pathToHash)
+        ////// case 2(ignore). [File] Move contents > Processing in Delete
+        ////// case 3(ignore). [Dir]  Move contents > Processing in Delete (reconginition Dir when Dir+File moved)
+        // case 4. [File] Copy many files
+        // case 5. [Dir]  Copy with files > Serch all the file in the Dir
+        // *if already exist, ignore the creation events.
+        // *always new path.
+        // *
+        // case 4. [File] Generate Product from ONE (processing like case 1 or ignore)
       }),
       provider.fileWatcher.onDidChange(uri => {
         console.log(uri); provider.refresh('Change'); // test code
         // case 1. Contents change event only > command event
       }),
-      provider.fileWatcher.onDidDelete(uri => { // To Semi Jeong
-        console.log(uri); provider.refresh('Delete'); // test code
-        // case 1. Delete file (Metadata deactivate or ignore)  > command event
+      provider.fileWatcher.onDidDelete(async uri => { // To Semi Jeong
+        console.log('onDidDelete::', uri); provider.refresh('Delete'); // test code
+        // TODO: pathToHash update
+        // 만약 필요하다면 pathToHash에도 folder용 update, file용 update 만들어서 따로 처리 (2번 돌아서 비효율적)
+        // 아니면 그냥 현재 disableMetadata, moveMetadata(file용 함수)에서만 처리하기
+        // file: 일반 삭제 > 그냥 지우기, 이동/rename > path 이름 변경
+        const path = uri.path;
+        if (MetadataEventManager.createUri) {
+          const newUri = MetadataEventManager.createUri.path;
+          // The file/folder is moved/renamed
+          if (fs.statSync(newUri).isDirectory()) {
+            // case 4. [Dir]+Path       | move > search (delete & new)
+            Metadata.moveMetadataUnderFolder(path, newUri);
+          } else if (provider.isValidFile(path)) { // FIXME: Do we have to check isValidFile for newUri too?
+            // case 3. [File]+Path      | move (delete & new)
+            Metadata.moveMetadata(path, newUri);
+          }
+        } else {
+          if (Metadata.d_isDir(path)) {
+            // case 2. [Dir]+undefined  | deactive > search
+            Metadata.disableMetadataUnderFolder(path);
+          } else if (provider.isValidFile(path)) {
+            // case 1. [File]+undefined | deactive
+            Metadata.disableMetadata(uri);
+          }
+        }
       }),
 
       vscode.workspace.onDidRenameFiles(uri => {
@@ -103,7 +135,7 @@ export class MetadataEventManager {
         // case 3. ignore
           console.log('No');
         }
-      }),
+      })
     ];
 
     registrations.forEach(disposable => context.subscriptions.push(disposable));

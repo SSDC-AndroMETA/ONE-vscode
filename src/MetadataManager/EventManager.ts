@@ -32,13 +32,14 @@ import { Logger } from '../Utils/Logger';
 
 /* istanbul ignore next */
 export class MetadataEventManager {
-  // private fileWatcher = vscode.workspace.createFileSystemWatcher(`**/*.{pb,onnx,tflite,circle,cfg,log}`); // glob pattern
   private fileWatcher = vscode.workspace.createFileSystemWatcher(`**/*`); // glob pattern
-  // private eventFlag:Number=0;
 
   public static didHideExtra: boolean = false;
 
   public static createUri: vscode.Uri | undefined = undefined;
+  public static deleteUri: vscode.Uri | undefined = undefined;
+
+  public static createUri: vscode.Uri | undefined;
   public static deleteUri: vscode.Uri | undefined = undefined;
 
   public static register(context: vscode.ExtensionContext) {
@@ -62,6 +63,7 @@ export class MetadataEventManager {
     }
 
     const provider = new MetadataEventManager(workspaceRoot, context.extension.extensionKind);
+
     // let timerId: NodeJS.Timeout | undefined=undefined;
 
     // let uri = vscode.Uri.file("/home/pjt01/Workspace/Test_space/a.log") //string to vscode.Uri(type)
@@ -106,6 +108,33 @@ export class MetadataEventManager {
         console.log('onDidChange  '+uri.fsPath);
         // case 1. [File] Contents change event > (1) call contentHash (2) change pathToHash (3) deactivate hash from pathToHash (4) insert hash from contentHash
       }),
+      provider.fileWatcher.onDidDelete(async uri => { // To Semi Jeong
+        console.log('onDidDelete::', uri); provider.refresh('Delete'); // test code
+        // TODO: pathToHash update
+        // 만약 필요하다면 pathToHash에도 folder용 update, file용 update 만들어서 따로 처리 (2번 돌아서 비효율적)
+        // 아니면 그냥 현재 disableMetadata, moveMetadata(file용 함수)에서만 처리하기
+        // file: 일반 삭제 > 그냥 지우기, 이동/rename > path 이름 변경
+        const path = uri.path;
+        if (MetadataEventManager.createUri) {
+          const newUri = MetadataEventManager.createUri.path;
+          // The file/folder is moved/renamed
+          if (fs.statSync(newUri).isDirectory()) {
+            // case 4. [Dir]+Path       | move > search (delete & new)
+            Metadata.moveMetadataUnderFolder(path, newUri);
+          } else if (provider.isValidFile(path)) { // FIXME: Do we have to check isValidFile for newUri too?
+            // case 3. [File]+Path      | move (delete & new)
+            Metadata.moveMetadata(path, newUri);
+          }
+        } else {
+          if (Metadata.d_isDir(path)) {
+            // case 2. [Dir]+undefined  | deactive > search
+            Metadata.disableMetadataUnderFolder(path);
+          } else if (provider.isValidFile(path)) {
+            // case 1. [File]+undefined | deactive
+            Metadata.disableMetadata(uri);
+          }
+        }
+      }),
       provider.fileWatcher.onDidCreate(async uri => {
         provider.refresh('Create'); // test code
         console.log('onDidCreate  '+uri.fsPath);
@@ -128,16 +157,6 @@ export class MetadataEventManager {
         // *always new path.
         // *
         // case 4. [File] Generate Product from ONE (processing like case 1 or ignore)
-      }),
-      provider.fileWatcher.onDidDelete(uri => {
-        provider.refresh('Delete'); // test code
-        console.log('onDidDelete  '+uri.fsPath);
-        let newUri=MetadataEventManager.createUri;
-        console.log(newUri);
-      // case 1. [File]+undefined | deactive
-      // case 2. [Dir]+undefined  | deactive > search
-      // case 3. [File]+Path      | move (delete & new)
-      // case 4. [Dir]+Path       | move > search (delete & new)
       }),
     ];
 

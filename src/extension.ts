@@ -29,6 +29,9 @@ import { ToolchainProvider } from './Toolchain/ToolchainProvider';
 import { Metadata } from './MetadataManager/metadataAPI';
 import { obtainWorkspaceRoot } from './Utils/Helpers';
 import {Logger} from './Utils/Logger';
+import { PathToHash } from './MetadataManager/pathToHash';
+import { StringLiteral } from 'typescript';
+import { time } from 'console';
 
 import { MetadataEventManager } from './MetadataManager/EventManager';
 
@@ -70,7 +73,11 @@ export function activate(context: vscode.ExtensionContext) {
 
   CircleViewerProvider.register(context);
 
-  // Metadata.register(context);
+  Metadata.register(context);
+
+  PathToHash.getInstance();
+  
+
   // returning backend registration function that will be called by backend extensions
   return backendRegistrationApi();
 }

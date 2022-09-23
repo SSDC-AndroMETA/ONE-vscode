@@ -33,16 +33,18 @@ import { Logger } from '../Utils/Logger';
 /* istanbul ignore next */
 export class MetadataEventManager {
   private fileWatcher = vscode.workspace.createFileSystemWatcher(`**/*`); // glob pattern
+
   public static didHideExtra: boolean = false;
 
-  public static oldUri: vscode.Uri | undefined = undefined;
-  public static newUri: vscode.Uri | undefined = undefined;
+  public static createUri: vscode.Uri | undefined = undefined;
+  public static deleteUri: vscode.Uri | undefined = undefined;
 
   public static createUri: vscode.Uri | undefined;
   public static deleteUri: vscode.Uri | undefined = undefined;
 
   public static register(context: vscode.ExtensionContext) {
     let workspaceRoot: vscode.Uri | undefined = undefined;
+
 
     try {
       workspaceRoot = vscode.Uri.file(obtainWorkspaceRoot());
@@ -61,36 +63,50 @@ export class MetadataEventManager {
     }
 
     const provider = new MetadataEventManager(workspaceRoot, context.extension.extensionKind);
+
+    // let timerId: NodeJS.Timeout | undefined=undefined;
+
     // let uri = vscode.Uri.file("/home/pjt01/Workspace/Test_space/a.log") //string to vscode.Uri(type)
-    // let path = uri.fsPath; // file:///home/pjt01/Workspace/Test_space/a.log // vscode.Uri(type) to string
+    // let path = uri.fsPath; // file:///home/pjt01/Workspace/Test_space/a.log // vscode.Uri(type) to string 
+          // provider.fileWatcher.onDidCreate(async uri => {
+      //   console.log(uri); provider.refresh('Create'); // test code
+      //   // case 1. Contents change event (when uri already in pathToHash)
+      //   // case 2. Baseline event (when create file in file system or copy from external source)
+      //   // case 3. Rename or Move File (processing like case 1 or ignore)
+      //   // case 4. Generate Product from ONE (processing like case 1 or ignore)
+      //   if (uri.fsPath.endsWith('a.log')){
+      //     let path='a.log';
+      //     console.log(1);
+      //     let hash=await Metadata.contentHash(path);
+      //     console.log(hash);
+      //     let content=await Metadata.getMetadata(hash);
+      //     console.log(content);
+      //     content['b.log']="Test";
+      //     await Metadata.setMetadata(hash, content);
+      //   }
+      // }),
+      // vscode.workspace.onDidRenameFiles(uri => {
+      //   provider.refresh('Rename'); //test code
+
+      //   if(provider.isValidFile(uri['files'][0]['oldUri'].fsPath) && provider.isValidFile(uri['files'][0]['newUri'].fsPath)){
+      //   // case 1. file rename  > command event
+      //     console.log('Yes Rename');
+      //   }
+      //   else if(fs.statSync(uri['files'][0]['newUri'].fsPath).isDirectory()){
+      //   // case 2. Directory check > child(pathToHash) updated & command event
+      //     console.log('Directory  Rename');
+      //   }
+      //   else{
+      //   // case 3. ignore
+      //     console.log('No  Rename');
+      //   }
+      // }),
     let timerId:NodeJS.Timeout | undefined=undefined;
     let registrations = [
-      provider.fileWatcher.onDidCreate(async uri => {
-        provider.refresh('Create'); // test code
-        console.log('onDidCreate  '+uri.fsPath);
-        MetadataEventManager.createUri=uri;
-        //if dir
-        // [case 5] > (1) call search > listup files > while [case4]
-        //else files
-        // validcheck(endswith)
-        // pathToHash search [case 1] > (1) call contentHash (2) change pathToHash (3) deactivate hash from pathToHash (4) insert hash from contentHash
-        // [case 4] > (1) call contentHash (2) getMetadata (3) compare to path(activate?) > Yes(ignore), No(Setup)
-        let temp=await vscode.workspace.findFiles('a.log/**');
-        console.log(temp);
-        timerId=setTimeout(()=>{MetadataEventManager.createUri=undefined; console.log('test  '+ MetadataEventManager.createUri);},0);
-        ////// case 1. [File] Contents change event (refer to pathToHash)
-        ////// case 2(ignore). [File] Move contents > Processing in Delete
-        ////// case 3(ignore). [Dir]  Move contents > Processing in Delete (reconginition Dir when Dir+File moved)
-        // case 4. [File] Copy many files
-        // case 5. [Dir]  Copy with files > Serch all the file in the Dir
-        // *if already exist, ignore the creation events.
-        // *always new path.
-        // *
-        // case 4. [File] Generate Product from ONE (processing like case 1 or ignore)
-      }),
       provider.fileWatcher.onDidChange(uri => {
-        console.log(uri); provider.refresh('Change'); // test code
-        // case 1. Contents change event only > command event
+        provider.refresh('Change'); // test code
+        console.log('onDidChange  '+uri.fsPath);
+        // case 1. [File] Contents change event > (1) call contentHash (2) change pathToHash (3) deactivate hash from pathToHash (4) insert hash from contentHash
       }),
       provider.fileWatcher.onDidDelete(async uri => { // To Semi Jeong
         console.log('onDidDelete::', uri); provider.refresh('Delete'); // test code
@@ -119,23 +135,29 @@ export class MetadataEventManager {
           }
         }
       }),
-
-      vscode.workspace.onDidRenameFiles(uri => {
-        provider.refresh('Rename'); //test code
-
-        if(provider.isValidFile(uri['files'][0]['oldUri'].fsPath) && provider.isValidFile(uri['files'][0]['newUri'].fsPath)){
-        // case 1. file rename  > command event
-          console.log('Yes');
-        }
-        else if(fs.statSync(uri['files'][0]['newUri'].fsPath).isDirectory()){
-        // case 2. Directory check > child(pathToHash) updated & command event
-          console.log('Directory');
-        }
-        else{
-        // case 3. ignore
-          console.log('No');
-        }
-      })
+      provider.fileWatcher.onDidCreate(async uri => {
+        provider.refresh('Create'); // test code
+        console.log('onDidCreate  '+uri.fsPath);
+        MetadataEventManager.createUri=uri;
+        //if dir
+        // [case 5] > (1) call search > listup files > while [case4]
+        //else files
+        // validcheck(endswith)
+        // pathToHash search [case 1] > (1) call contentHash (2) change pathToHash (3) deactivate hash from pathToHash (4) insert hash from contentHash
+        // [case 4] > (1) call contentHash (2) getMetadata (3) compare to path(activate?) > Yes(ignore), No(Setup)
+        let temp=await vscode.workspace.findFiles('a.log/**');
+        console.log(temp);
+        timerId=setTimeout(()=>{MetadataEventManager.createUri=undefined; console.log('test  '+ MetadataEventManager.createUri);},0);
+        ////// case 1. [File] Contents change event (refer to pathToHash)
+        ////// case 2(ignore). [File] Move contents > Processing in Delete
+        ////// case 3(ignore). [Dir]  Move contents > Processing in Delete (reconginition Dir when Dir+File moved)
+        // case 4. [File] Copy many files
+        // case 5. [Dir]  Copy with files > Serch all the file in the Dir
+        // *if already exist, ignore the creation events.
+        // *always new path.
+        // *
+        // case 4. [File] Generate Product from ONE (processing like case 1 or ignore)
+      }),
     ];
 
     registrations.forEach(disposable => context.subscriptions.push(disposable));

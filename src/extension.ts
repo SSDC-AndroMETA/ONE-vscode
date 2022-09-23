@@ -29,6 +29,8 @@ import { ToolchainProvider } from './Toolchain/ToolchainProvider';
 import { Metadata } from './MetadataManager/metadataAPI';
 import {Logger} from './Utils/Logger';
 import { PathToHash } from './MetadataManager/pathToHash';
+import { StringLiteral } from 'typescript';
+import { time } from 'console';
 
 /* istanbul ignore next */
 export function activate(context: vscode.ExtensionContext) {
@@ -48,7 +50,7 @@ export function activate(context: vscode.ExtensionContext) {
   } else {
     vscode.commands.executeCommand('setContext', 'one:extensionKind', 'Workspace');
   }
-
+  
   OneTreeDataProvider.register(context);
 
   ToolchainProvider.register(context);
@@ -68,8 +70,8 @@ export function activate(context: vscode.ExtensionContext) {
 
   Metadata.register(context);
 
-  let p1 = PathToHash.getPathToHash().pathToHash;
-
+  PathToHash.getInstance();
+  
 
   // returning backend registration function that will be called by backend extensions
   return backendRegistrationApi();

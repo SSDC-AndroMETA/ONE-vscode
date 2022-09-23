@@ -101,10 +101,12 @@ export class MetadataEventManager {
       // }),
     let timerId:NodeJS.Timeout | undefined=undefined;
     let registrations = [
-      provider.fileWatcher.onDidChange(uri => {
+      provider.fileWatcher.onDidChange(async uri => {
         provider.refresh('Change'); // test code
         console.log('onDidChange  '+uri.fsPath);
+        if(workspaceRoot){ await provider.changeEvent(workspaceRoot.fsPath, uri.fsPath);
         // case 1. [File] Contents change event > (1) call contentHash (2) change pathToHash (3) deactivate hash from pathToHash (4) insert hash from contentHash
+        }
       }),
       provider.fileWatcher.onDidCreate(async uri => {
         provider.refresh('Create'); // test code
@@ -155,4 +157,12 @@ export class MetadataEventManager {
     let ends=['.pb','.onnx','.tflite','.circle','.cfg','.log'];
     return ends.some((x)=>path.endsWith(x));
   }
+  async changeEvent(root: string, path: string){
+  // case 1. [File] Contents change event
+  path=path.split(root+'/')[1];
+  console.log(path);
+  // let beforehash=pathToHash.
+  let afterhash=await Metadata.contentHash(path);
+  }
+  //> (1) call contentHash (2) change pathToHash (3) deactivate hash from pathToHash (4) insert hash from contentHash
 }

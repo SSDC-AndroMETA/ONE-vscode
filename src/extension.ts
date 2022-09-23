@@ -27,6 +27,7 @@ import {PartEditorProvider} from './PartEditor/PartEditor';
 import {PartGraphSelPanel} from './PartEditor/PartGraphSelector';
 import { ToolchainProvider } from './Toolchain/ToolchainProvider';
 import { Metadata } from './MetadataManager/metadataAPI';
+import { obtainWorkspaceRoot } from './Utils/Helpers';
 import {Logger} from './Utils/Logger';
 
 import { MetadataEventManager } from './MetadataManager/EventManager';
@@ -70,7 +71,6 @@ export function activate(context: vscode.ExtensionContext) {
   CircleViewerProvider.register(context);
 
   // Metadata.register(context);
-
   // returning backend registration function that will be called by backend extensions
   return backendRegistrationApi();
 }

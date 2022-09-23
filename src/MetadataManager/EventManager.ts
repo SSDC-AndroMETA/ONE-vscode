@@ -39,11 +39,9 @@ export class MetadataEventManager {
   public static createUri: vscode.Uri | undefined = undefined;
   public static deleteUri: vscode.Uri | undefined = undefined;
 
-  public static createUri: vscode.Uri | undefined;
-  public static deleteUri: vscode.Uri | undefined = undefined;
-
   public static register(context: vscode.ExtensionContext) {
     let workspaceRoot: vscode.Uri | undefined = undefined;
+    //let pathToHash=async ()=>{return await PathToHash.getInstance()};
 
 
     try {
@@ -106,9 +104,7 @@ export class MetadataEventManager {
       provider.fileWatcher.onDidChange(async uri => {
         provider.refresh('Change'); // test code
         console.log('onDidChange  '+uri.fsPath);
-        if(workspaceRoot){ await provider.changeEvent(workspaceRoot.fsPath, uri.fsPath);
-        // case 1. [File] Contents change event > (1) call contentHash (2) change pathToHash (3) deactivate hash from pathToHash (4) insert hash from contentHash
-        }
+        if(workspaceRoot){ await provider.changeEvent(workspaceRoot.fsPath, uri.fsPath);}
       }),
       provider.fileWatcher.onDidDelete(async uri => { // To Semi Jeong
         console.log('onDidDelete::', uri); provider.refresh('Delete'); // test code
@@ -141,6 +137,15 @@ export class MetadataEventManager {
         provider.refresh('Create'); // test code
         console.log('onDidCreate  '+uri.fsPath);
         MetadataEventManager.createUri=uri;
+        if(fs.statSync(uri.fsPath).isDirectory()){
+          //provider.createDir(); (1) call search > listup files > while [case4]
+        }
+        else if(provider.isValidFile(uri.fsPath)){
+          //if(pathToHash()){await provider.changeEvent(workspaceRoot.fsPath, uri.fsPath  }
+          //else{}
+        }
+        
+
         //if dir
         // [case 5] > (1) call search > listup files > while [case4]
         //else files
@@ -176,12 +181,28 @@ export class MetadataEventManager {
     let ends=['.pb','.onnx','.tflite','.circle','.cfg','.log'];
     return ends.some((x)=>path.endsWith(x));
   }
+
   async changeEvent(root: string, path: string){
   // case 1. [File] Contents change event
   path=path.split(root+'/')[1];
   console.log(path);
-  // let beforehash=pathToHash.
-  let afterhash=await Metadata.contentHash(path);
+
+  //(1) call contentHas
+  //let beforehash=pathToHash.
+  //let afterhash=await Metadata.contentHash(path);
+
+  //(2) deactivate hash frompathToHash
+  //const metadata = await Metadata.getMetadata(beforehash);
+  //const data = metadata[path];
+  //Metadata.disableMetadata(path);
+
+  //(3) change pathToHash
+  //delete pathToHash[path]
+  //pathToHash[path]=afterhash;
+
+  //(4) insert hash from contentHash
+  //const afterMetadata=Metadata.getMetadata(afterhash);
+  //afterMetadata[path]=data;
+  //Metadata.setMetadata(afterhash, afterMetadata);
   }
-  //> (1) call contentHash (2) change pathToHash (3) deactivate hash from pathToHash (4) insert hash from contentHash
 }

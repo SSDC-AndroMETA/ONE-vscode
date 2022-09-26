@@ -312,6 +312,7 @@ view.View = class {
             this._mousePosition =
                 {left: container.scrollLeft, top: container.scrollTop, x: e.clientX, y: e.clientY};
             e.stopImmediatePropagation();
+            console.log(this._host);
             const mouseMoveHandler = (e) => {
                 e.preventDefault();
                 e.stopImmediatePropagation();

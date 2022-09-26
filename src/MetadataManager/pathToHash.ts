@@ -81,25 +81,22 @@ export class PathToHash{
     }
 
     public isFile(uri: vscode.Uri): boolean {
-        const relativeFolderPath = vscode.workspace.asRelativePath(uri);
-        console.log(`PathToHash::isFile():: relativeFolderPath=${relativeFolderPath}`);
-        const hash = this.getPathToHash(relativeFolderPath);
+        const hash = this.getPathToHash(uri);
         console.log(typeof(hash) === 'string')
         return typeof(hash) === 'string';
     }
 
     public exists(uri: vscode.Uri): boolean {
-        return this.getPathToHash(vscode.workspace.asRelativePath(uri)) !== undefined;
+        return this.getPathToHash(uri) !== undefined;
     }
 
     public getFilesUnderFolder(uri: vscode.Uri): vscode.Uri[] {
-        const relativeFolderPath = vscode.workspace.asRelativePath(uri);
-        console.log(`PathToHash::getFilesUnderFolder():: relativeFolderPath=${relativeFolderPath}`);
-        const folder = this.getPathToHash(relativeFolderPath);
+        console.log(`PathToHash::getFilesUnderFolder():: uri=${uri}`);
+        const folder = this.getPathToHash(uri);
         const files: vscode.Uri[] = [];
         if (typeof (folder) === 'string') {
             // not a folder
-            console.log(`PathToHash::getFilesUnderFolder()::${relativeFolderPath} is not a folder`);
+            console.log(`PathToHash::getFilesUnderFolder()::${uri} is not a folder`);
             return files;
         }
         for (const name in folder) {

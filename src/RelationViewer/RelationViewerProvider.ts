@@ -82,7 +82,6 @@ export class RelationViewerDocument implements vscode.CustomDocument {
     view.initRelationViewer();
     view.loadContent();
     this._metadataViwer.push(view);
-<<<<<<< HEAD
 
     //상대 경로 받기
     const relativePath:string = vscode.workspace.asRelativePath(fileUri);
@@ -94,19 +93,6 @@ export class RelationViewerDocument implements vscode.CustomDocument {
       {type:'create',payload: payload}
     );
     
-=======
-    
-    //relationData를 가져오는 함수
-    let payload:any;
-
-    // relation 데이터를 웹뷰로 메세지를 보낸다.
-    payload = getRelationData(fileUri);
-    panel.webview.postMessage(
-      {type:'create',payload: payload,fileUri: fileUri}
-    );
-    
-
->>>>>>> viewer
     panel.onDidDispose(() => {
       // TODO make faster
       this._metadataViwer.forEach((view, index) => {
@@ -142,30 +128,19 @@ export class RelationViewerProvider implements
         if(uri instanceof Node){
           fileUri = uri.uri;
         }
-<<<<<<< HEAD
         
-=======
->>>>>>> viewer
         vscode.commands.executeCommand('vscode.openWith', fileUri, RelationViewerProvider.viewType);
       })
       // Add command registration here
     ];
-<<<<<<< HEAD
     
-=======
-
->>>>>>> viewer
     // show relation 보여줄 파일 확장자
     vscode.commands.executeCommand('setContext', 'relation.supportedFiles', [
       '.tflite',
       '.pb',
       '.onnx',
       '.circle',
-<<<<<<< HEAD
       '.log'  
-=======
-      '.log'  // log 파일 제외할지 결정
->>>>>>> viewer
     ]);
 
     registrations.forEach(disposable => context.subscriptions.push(disposable));
@@ -198,7 +173,6 @@ export class RelationViewerProvider implements
 }
 
 export function getRelationData(path:any) {
-<<<<<<< HEAD
   const dummyData = {
     "selected": "1",
     "relationData": [
@@ -242,23 +216,4 @@ export function getRelationData(path:any) {
   //console.log(dummyData);
 
   return dummyData;
-=======
-  return {
-    "selected": "1",
-    "relationData": [
-      {"id": "1", "parent": "", "idx": 0, "dataList": [{"name": "a.tflite", "path": "./a.tflite"}]},  // TODO: id, parentid: hashId
-      {"id": "2", "parent": "1", "idx": 0, "dataList": [{"name": "b.circle", "path": "./b.circle", "oneccVersion": "1.0.0", "toolchainVersion": "1.0.0"}]},
-      {"id": "3", "parent": "1", "idx": 0, "dataList": [{"name": "c.circle", "path": "./c.circle", "oneccVersion": "1.0.0", "toolchainVersion": "1.0.0"}]},
-      {"id": "4", "parent": "2", "idx": 0, "dataList": [{"name": "b1.circle", "path": "./b1.circle", "oneccVersion": "1.0.0", "toolchainVersion": "1.0.0"}]},
-      {"id": "5", "parent": "2", "idx": 0, "dataList": [{"name": "b2.circle", "path": "./b2.circle", "oneccVersion": "1.0.0", "toolchainVersion": "1.0.0"}]},
-      {"id": "6", "parent": "2", "idx": 0, "dataList": [{"name": "b3.circle", "path": "./b3.circle", "oneccVersion": "1.0.0", "toolchainVersion": "1.0.0"}]},
-      {"id": "7", "parent": "2", "idx": 0, "dataList": [{"name": "b4.circle", "path": "./b4.circle", "oneccVersion": "1.0.0", "toolchainVersion": "1.0.0"}]},
-      {"id": "8", "parent": "2", "idx": 0, "dataList": [{"name": "b5.circle", "path": "./b5.circle", "oneccVersion": "1.0.0", "toolchainVersion": "1.0.0"}]},
-      {"id": "9", "parent": "3", "idx": 0, "dataList": [{"name": "d.circle", "path": "./d.circle", "oneccVersion": "1.0.0", "toolchainVersion": "1.0.0"}]},
-      {"id": "10", "parent": "9", "idx": 0, "dataList": [{"name": "e.circle", "path": "./e.circle", "oneccVersion": "1.0.0", "toolchainVersion": "1.0.0"}]},
-      {"id": "11", "parent": "10", "idx": 0, "dataList": [{"name": "e1.circle", "path": "./e1.circle", "oneccVersion": "1.0.0", "toolchainVersion": "1.0.0"}]},
-      {"id": "12", "parent": "10", "idx": 0, "dataList": [{"name": "e2.circle", "path": "./e2.circle", "oneccVersion": "1.0.0", "toolchainVersion": "1.0.0"}]}
-    ]
-  };
->>>>>>> viewer
 }

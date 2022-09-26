@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /*
  * Copyright (c) 2022 Samsung Electronics Co., Ltd. All Rights Reserved
  *
@@ -47,12 +46,6 @@ import { getNonce } from '../Utils/external/Nonce';
 import { getUri } from '../Utils/external/Uri';
 import { obtainWorkspaceRoot } from '../Utils/Helpers';
 import { getRelationData} from './RelationViewerProvider';
-=======
-import * as vscode from 'vscode';
-import { getNonce } from '../Utils/external/Nonce';
-import { getUri } from '../Utils/external/Uri';
-import { getRelationData } from './RelationViewerProvider';
->>>>>>> viewer
 
 /* istanbul ignore next */
 export class RelationViewer{
@@ -138,16 +131,12 @@ export class RelationViewer{
     // Handle messages from the webview
     this._webview.onDidReceiveMessage(message => {
       let payload;
-<<<<<<< HEAD
       let fileUri:vscode.Uri;
       let viewType:string = 'default';
-=======
->>>>>>> viewer
       switch (message.type) {
         case "update":
           payload = getRelationData(message.path);
           panel.webview.postMessage(
-<<<<<<< HEAD
             {type:'update', payload: payload, historyList:message.historyList}
           );
           break;
@@ -168,11 +157,6 @@ export class RelationViewer{
           fileUri = vscode.Uri.file(obtainWorkspaceRoot() + '/' + message.path);
           vscode.commands.executeCommand('vscode.openWith', fileUri, viewType);
           break;
-=======
-            { type:'update', payload: payload, fileUri: message.path}
-          );
-          break;
->>>>>>> viewer
         default:
           break;
       }

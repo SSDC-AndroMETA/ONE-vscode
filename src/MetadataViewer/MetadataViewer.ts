@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /*
  * Copyright (c) 2022 Samsung Electronics Co., Ltd. All Rights Reserved
  *
@@ -41,8 +40,6 @@ Some part of this code refers to
 https://github.com/microsoft/vscode-extension-samples/blob/2556c82cb333cf65d372bd01ac30c35ea1898a0e/custom-editor-sample/src/catScratchEditor.ts
 */
 
-=======
->>>>>>> viewer
 import * as vscode from 'vscode';
 import { getNonce } from '../Utils/external/Nonce';
 

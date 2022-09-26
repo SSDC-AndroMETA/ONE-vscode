@@ -14,6 +14,17 @@
  * limitations under the License.
  */
 
+<<<<<<< HEAD
+=======
+// const relationData = [
+//   {"name": "Top Level", "parent": "", "path": "임의 경로", "onecc version": "1.0.0", "toolchain version": "1.0.0"},  // TODO: name => id
+//   {"name": "Level 2: A", "parent": "Top Level", "path": "임의 경로", "onecc version": "1.0.0", "toolchain version": "1.0.0"},
+//   {"name": "Level 2: B", "parent": "Top Level", "path": "임의 경로", "onecc version": "1.0.0", "toolchain version": "1.0.0"},
+//   {"name": "Son of A", "parent": "Level 2: A", "path": "임의 경로", "onecc version": "1.0.0", "toolchain version": "1.0.0"},
+//   {"name": "Daughter of A", "parent": "Level 2: A", "path": "임의 경로", "onecc version": "1.0.0", "toolchain version": "1.0.0"},
+// ];
+
+>>>>>>> viewer
 //웹뷰 오른쪽 클릭 막기
 document.addEventListener('contextmenu', event => event.preventDefault());
 
@@ -27,6 +38,12 @@ let currentFileInfo = null;
 //현재 컨텍스트 메뉴를 킨 노드 경로 저장
 let selectedNodePath = null;
 
+//현재 파일의 Uri 
+let currentFileUri = "";
+
+//현재 파일의 워크스페이스 주소
+let workspaceFolderName = "";
+
 window.addEventListener('message',(event) => {
   const message = event.data;
   const { selected, relationData } = message.payload;
@@ -34,6 +51,12 @@ window.addEventListener('message',(event) => {
   
   switch (message.type) {
     case 'create':
+<<<<<<< HEAD
+=======
+      currentFileUri = message.fileUri.path;
+      console.log(message.fileUri.path);
+      workspaceFolderName = message.workspaceFolderName;
+>>>>>>> viewer
       detachTree();
       pushCurrentFileInfoObject(historyList);
       attachTree(relationData);
@@ -41,6 +64,7 @@ window.addEventListener('message',(event) => {
       break;
     case 'update':
       console.log('update 메시지는: ', message);
+<<<<<<< HEAD
       detachTree();
       historyList = message.historyList;
       pushCurrentFileInfoObject(historyList);
@@ -49,6 +73,8 @@ window.addEventListener('message',(event) => {
       break;
     case 'history':
       console.log('history 메시지는: ', message);
+=======
+>>>>>>> viewer
       detachTree();
       attachTree(relationData);
       historyList = message.historyList;
@@ -60,6 +86,13 @@ window.addEventListener('message',(event) => {
 
 function attachTree(relationData) {
   
+<<<<<<< HEAD
+=======
+  //현재 파일 절대 경로 보여주기
+  //currentFileUri = String(currentFileUri).replace(/\//gi," > ");
+  //document.getElementById('nav-bar-content-box').innerText =`${currentFileUri}` ;
+  
+>>>>>>> viewer
   //  assigns the data to a hierarchy using parent-child relationships
   const treeData = d3.stratify()
     .id(d => d.id)
@@ -242,14 +275,23 @@ function attachTree(relationData) {
     .style("text-anchor", "middle")
     .text(d => d.data.dataList[d.data.representIdx].name.split('.')[d.data.dataList[d.data.representIdx].name.split('.').length - 1])
     .on('mouseover', (mouse, node) => {
+<<<<<<< HEAD
       hoverText.style.display = 'block';
       hoverText.innerText = `${node.data.dataList[node.data.representIdx].path}`;
       hoverText.style.left = `${node.x - 35}px`;
       hoverText.style.top = `${node.y + 10}px`;
+=======
+      hoverText.style.visibility = 'visible';
+      hoverText.innerText = "/home/jihongyu/ONE-vscode/res/modelDir/truediv/model.q8.circle.log";
+      hoverText.style.left = `${node.x}px`;
+      hoverText.style.top = `${mouse.path[0].getBoundingClientRect().top - 25}px`;
+      
+>>>>>>> viewer
     }).on('mouseout', (mouse, node) => {
       hoverText.style.display = 'none';
     });
   
+<<<<<<< HEAD
   //각 노드 이름 그리기
   setDrawInfoInNode('name',node,rectSizeHeight,waitForDouble);
 
@@ -451,6 +493,31 @@ function attachTree(relationData) {
     historyDiv.append(historyInfoLine,historyDivInfo);
   }
 
+=======
+  //toolchain/onecc 정보 기록
+  node.append("text")
+  .attr("dy", ".35em")
+  .attr("y", -rectSizeHeight + 30)
+  .style("text-anchor", "middle")
+  .text(d => d.data.dataList[d.data.idx].name)
+  .on("dblclick", (p,d) => {
+    if (waitForDouble !== null) {
+      clearTimeout(waitForDouble);
+      
+      console.log('더블 클릭입니다.');
+      waitForDouble = null;
+      
+    }
+  })
+  .on("click", (p, d) => {
+    if(waitForDouble === null) {
+      waitForDouble = setTimeout(() => {
+        console.log('원 클릭입니다.');
+        waitForDouble = null;
+      }, 400);
+    }
+  });
+>>>>>>> viewer
 }
 
 function pushCurrentFileInfoObject(historyList) {

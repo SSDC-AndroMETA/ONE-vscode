@@ -33,6 +33,10 @@ svg {
   margin-top: 30px;
 }
 
+svg {
+  margin-top: 20px;
+}
+
 .node circle {
     fill: #fff;
     stroke: steelblue;
@@ -63,6 +67,14 @@ svg {
   font: 15px sans-serif;
   font-weight: bold;
   cursor: pointer;
+
+  /* 드래그 막기 */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .text-shadow-white {
@@ -79,7 +91,13 @@ svg {
 }
 
 .relation-box{
+<<<<<<< HEAD
   /* width: 100%; */
+=======
+  width: 100%;
+  /* 약간 오른쪽으로 치운것 같아 왼쪽으로 이동 */
+  /* margin-left: -50px;  */
+>>>>>>> viewer
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -114,6 +132,7 @@ svg {
   width: max-content;
   line-height: 22px;
   color: lightsteelblue;
+<<<<<<< HEAD
 }
 
 
@@ -243,4 +262,6 @@ svg {
 /* scroll hide */
 .history-main-box::-webkit-scrollbar{
   display: none;
+=======
+>>>>>>> viewer
 }

@@ -39,9 +39,9 @@ export class Metadata {
         });
     }
 
-    public static async getFileHash(path: string) {
+    public static async getFileHash(uri: vscode.Uri) {
         const instance = await PathToHash.getInstance();
-        const hash = instance.getPathToHash(path);
+        const hash = instance.getPathToHash(uri);
         return hash;
     }
 

@@ -276,7 +276,9 @@ export class Metadata{
                 "toolchain_version": element.toolchain_version,
                 "is_deleted":element.is_deleted
             };
+            dataList.push(data);
         }
+        return dataList;
     }
     // public static d_getFilesUnderDir(path: string): string[] { // to Semi Jeong : is this function really needed?
     //     if (Metadata.d_isDir(path)) {

@@ -67,7 +67,7 @@ export class MetadataEventManager {
       provider.fileWatcher.onDidChange(async uri => {
         provider.refresh('Change'); // test code
         console.log('onDidChange  '+uri.fsPath);
-        if(workspaceRoot){ await provider.changeEvent(workspaceRoot.fsPath, uri.fsPath);}
+        if(workspaceRoot){ await provider.changeEvent(uri);}
       }),
       provider.fileWatcher.onDidDelete(async uri => { // To Semi Jeong
         // FIXME: declare PathToHash instance outside of the function (i.e. make instance member variable)
@@ -111,7 +111,7 @@ export class MetadataEventManager {
           await provider.createDirEvent(uri);
         }
         else if(Metadata.isValidFile(uri)){
-          if(provider.pathToHashObj.getPathToHash(uri)&&workspaceRoot){await provider.changeEvent(workspaceRoot.fsPath, uri.fsPath);}
+          if(provider.pathToHashObj.getPathToHash(uri)&&workspaceRoot){await provider.changeEvent(uri);}
           else{await provider.createFileEvent(uri);}
         }
         timerId=setTimeout(()=>{MetadataEventManager.createUri=undefined; console.log('test  '+ MetadataEventManager.createUri);},0);
@@ -130,10 +130,9 @@ export class MetadataEventManager {
   }
 
 
-  async changeEvent(root: string, path: string): Promise<void> {
+  async changeEvent(uri:vscode.Uri): Promise<void> {
     // case 1. [File] Contents change event
-    const relativePath = path.split(root+'/')[1];
-    const uri = vscode.Uri.file(path);
+    const relativePath = vscode.workspace.asRelativePath(uri);
     console.log(uri);
     console.log(1, relativePath);
 
@@ -153,7 +152,7 @@ export class MetadataEventManager {
     if(metadata[relativePath]) {  // TODO: change path to filename
         // step 4. If exists, deactivate (set deleted_time) that path.
         // FIXME: Do we need to deactivate it from pathToHash too? > If we deactivate pathToHash, if rename event came, we cannot specify what hash value the path is for.
-        metadata[relativePath]["deleted_time"] = new Date();
+        metadata[relativePath]["is_deleted"] = true;
         console.log(6, metadata);
         // await Metadata.setMetadata(beforehash, metadata);
     }
@@ -173,24 +172,24 @@ export class MetadataEventManager {
     console.log(9, await Metadata.getMetadata(afterhash));
     
     const afterMetadata: any = {};
-    const filename: any = path.split('/').pop();
-    const stats: any = await MetadataEventManager.getStats(afterhash);
+    const filename: any = relativePath.split('/').pop();
+    const stats: any = await MetadataEventManager.getStats(uri);
     console.log(stats);
 
-    afterMetadata[filename] = {};
-    afterMetadata[filename]["name"] = filename.split(".")[0];
-    afterMetadata[filename]["file_extension"] = filename.split(".")[1];
-    afterMetadata[filename]["create_time"] = stats.birthtime;
-    afterMetadata[filename]["modified_time"] = stats.mtime;
-    afterMetadata[filename]["deleted_time"] = "삭제 시각(date)";  // TODO: 빈문자열?
+    afterMetadata[relativePath] = {};
+    afterMetadata[relativePath]["name"] = filename;
+    afterMetadata[relativePath]["file_extension"] = filename.split(".")[1];
+    afterMetadata[relativePath]["create_time"] = stats.birthtime;
+    afterMetadata[relativePath]["modified_time"] = stats.mtime;
+    afterMetadata[relativePath]["is_deleted"] = false;
     await Metadata.setMetadata(afterhash, afterMetadata);
     
     console.log(11, await Metadata.getMetadata(afterhash));
     //afterMetadata[path]=data;
   }
-  public static getStats(hash:any) {
+  public static getStats(uri:vscode.Uri) {
     return new Promise(function (resolve, reject) {
-      fs.stat(vscode.Uri.file(obtainWorkspaceRoot()).fsPath + `/.meta/hash_objects/${hash.substring(0, 2)}/${hash.substring(2)}.json`, function (err, stats) {
+      fs.stat(uri.fsPath, function (err, stats) {
         if (err) {
           return reject(err);
         }
@@ -232,23 +231,26 @@ export class MetadataEventManager {
         if(keyResult.length){ data=metadata[keyResult[0]]; }
         else {data["is_deleted"]=false;}
 
+
         //data update
-        const file=fs.statSync(uri.fsPath);
-        const splitPath=uri.fsPath.split('.');
-        data["file_extension"]=splitPath[splitPath.length-1];
-        data["created_time"]=file.ctime.toLocaleString();
-        data["modified_time"]=file.mtime.toLocaleString();
+        const stats: any = await MetadataEventManager.getStats(uri);
+        data["name"]=uri.fsPath.split('/').pop();
+        data["file_extension"]=uri.fsPath.split('.').pop();
+        data["created_time"]=stats.birthtime;
+        data["modified_time"]=stats.mtime;
 
         metadata[relPath]=data;
       }
     }
     else{ // metadata doesn't exist : common file        
-      const file=fs.statSync(uri.fsPath); 
       const splitPath=uri.fsPath.split('.');
+      const stats: any = await MetadataEventManager.getStats(uri);
+
       metadata[relPath]={
-        "file_extension": splitPath[splitPath.length-1],
-        "created_time": file.ctime.toLocaleString(),
-        "modified_time": file.mtime.toLocaleString(),
+        "name":uri.fsPath.split('/').pop(),
+        "file_extension": uri.fsPath.split('.').pop(),
+        "created_time": stats.birthtime,
+        "modified_time": stats.mtime,
         "is_deleted": false,
       };
     }

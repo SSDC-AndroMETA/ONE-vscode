@@ -43,8 +43,6 @@ export class MetadataEventManager {
 
   public static register(context: vscode.ExtensionContext) {
     let workspaceRoot: vscode.Uri | undefined = undefined;
-    //let pathToHash=async ()=>{return await PathToHash.getInstance()};
-
 
     try {
       workspaceRoot = vscode.Uri.file(obtainWorkspaceRoot());
@@ -112,13 +110,10 @@ export class MetadataEventManager {
         if(fs.statSync(uri.fsPath).isDirectory()){
           await provider.createDirEvent(uri);
         }
-        else if(provider.isValidFile(relPath)){
-          if(provider.pathToHashObj.getPathToHash(relPath)&&workspaceRoot){await provider.changeEvent(uri);}
+        else if(Metadata.isValidFile(uri)){
+          if(provider.pathToHashObj.getPathToHash(uri)&&workspaceRoot){await provider.changeEvent(workspaceRoot.fsPath, uri.fsPath);}
           else{await provider.createFileEvent(uri);}
         }
-        
-        let temp=await vscode.workspace.findFiles('a.log/**');
-        console.log(temp);
         timerId=setTimeout(()=>{MetadataEventManager.createUri=undefined; console.log('test  '+ MetadataEventManager.createUri);},0);
       }),
     ];
@@ -127,16 +122,13 @@ export class MetadataEventManager {
   }
 
   constructor(private workspaceRoot: vscode.Uri | undefined, private _extensionKind: vscode.ExtensionKind) {
+    PathToHash.getInstance().then(data=>{this.pathToHashObj=data});
   }
 
   refresh(message: string): void {
     vscode.window.showInformationMessage(message);
   }
 
-  isValidFile(path: string): boolean{
-    let ends=['.pb','.onnx','.tflite','.circle','.cfg','.log'];
-    return ends.some((x)=>path.endsWith(x));
-  }
 
   async changeEvent(root: string, path: string): Promise<void> {
     // case 1. [File] Contents change event
@@ -218,37 +210,29 @@ export class MetadataEventManager {
   async createFileEvent(uri:vscode.Uri){
     //(1) refer to getPathToHash
     let relPath=vscode.workspace.asRelativePath(uri);
-    let newHash=this.pathToHashObj.getPathToHash(relPath);
-
-    if(newHash){ //ubuntu text editor
-      this.changeEvent(workspaceRoot.fsPath, uri.fsPath);
-      return;
-    }
 
     //(2) insert PathToHash
     await this.pathToHashObj.addPath(uri);
-    newHash=this.pathToHashObj.getPathToHash(relPath);
+    let newHash=await this.pathToHashObj.getPathToHash(uri);
 
     //(3) Hash로 getMetadata
     let metadata=await Metadata.getMetadata(newHash);
-
-    //(4) Metadata 존재 > Hash로 Metadata Search > 있다면 activate 확인 > (active -> ignore) or (deactivate->activate)
-    //(5)                                        > 없다면 유사 파일 존재, copy해서 생성 
+    //(4) Metadata Exist (searching with Hash)? (activate | deactivate) : copy format 
     if(Object.keys(metadata).length !== 0){ // metadata exist
       if(metadata[relPath]){
-        if (!metadata[relPath]["is_deleted"]) return; // path already activate
+        if (!metadata[relPath]["is_deleted"]) return; // path already activate. ignore this case
         metadata[relPath]["is_deleted"]=false;  // path deactive > activate    
       }
       else{ // for copy format
         const keyList=Object.keys(metadata);
-        const keyResult=keyList.filter(key=> !metadata[key]["is_deleted"])// find activate. or last key of KeyList;
+        const keyResult=keyList.filter(key=> !metadata[key]["is_deleted"]) // find activate. or last key of KeyList;
 
-        // data copy
-        let data=metadata[keyList[0]];
+        //data copy
+        let data=metadata[keyList[keyList.length-1]];
         if(keyResult.length){ data=metadata[keyResult[0]]; }
         else {data["is_deleted"]=false;}
 
-        //update
+        //data update
         const file=fs.statSync(uri.fsPath);
         const splitPath=uri.fsPath.split('.');
         data["file_extension"]=splitPath[splitPath.length-1];
@@ -268,7 +252,7 @@ export class MetadataEventManager {
         "is_deleted": false,
       };
     }
-    //(6) Metadata 없음 > 공통 파일만 생성.
+    //(6) Metadata Generation
     await Metadata.setMetadata(newHash,metadata);
   }
 }

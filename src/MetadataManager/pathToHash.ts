@@ -47,7 +47,7 @@ export class PathToHash{
         }
         
         // 4. Replace is_deleted with true for all metadata not in pathToHash
-        this.deleteMetadata(flattenPathToHash);
+        await this.deleteMetadata(flattenPathToHash);
     }
 
     public async deleteMetadata(flattenpathToHash : any){
@@ -60,13 +60,13 @@ export class PathToHash{
             for(const hashFile of hashList){
                 let hashUri = vscode.Uri.joinPath(hashFolderUri, hashFile[0]);
                 let metadata = JSON.parse(Buffer.from(await vscode.workspace.fs.readFile(hashUri)).toString());
+                let hash = array[0] + hashFile[0].split('.')[0];
                 for(const key in metadata){
-                    if(!flattenpathToHash[key]){
+                    if(!metadata[key].is_deleted && flattenpathToHash[key] !== hash){
                         metadata[key].is_deleted = true;
                     }
                 }
-
-                Metadata.setMetadata(hashFile[0], metadata);
+                Metadata.setMetadata(hash, metadata);
             }
         }
     }
@@ -106,7 +106,7 @@ export class PathToHash{
             queue.push([data, pathToHash[data], data.toString()]);
         }
 
-        while(queue.length!= 0){
+        while (queue.length !== 0){
             let obj = queue.pop();
             if(obj===undefined) continue;
 
@@ -260,7 +260,7 @@ export class PathToHash{
 
     private deleteEmptyFolder(parent: any, paths: string[], idx: number) {
         const path = paths[idx];
-        if (paths.length - 2 == idx) {
+        if (paths.length - 2 === idx) {
             if (Object.keys(parent[path]).length === 0) {
                 delete parent[path];
             }

@@ -141,7 +141,7 @@ export class MetadataEventManager {
 
     //(2) deactivate changed hash object
     let metadata: any = await Metadata.getMetadata(beforehash);
-    if(metadata && metadata[relativePath]) {
+    if(Object.keys(metadata).length !== 0 && metadata[relativePath]) {
         metadata[relativePath]["is_deleted"] = true;
         await Metadata.setMetadata(beforehash, metadata);
     }

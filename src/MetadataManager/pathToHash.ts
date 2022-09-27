@@ -1,12 +1,8 @@
 import * as vscode from 'vscode';
 import * as crypto from 'crypto';
-<<<<<<< HEAD
-import { ConsoleReporter } from '@vscode/test-electron';
-=======
 import fs from 'fs';
 import {Metadata} from './metadataAPI';
 import {MetadataEventManager} from './EventManager';
->>>>>>> manager
 
 export class PathToHash{
     private static instance: PathToHash;
@@ -283,6 +279,4 @@ export class PathToHash{
             delete parent[path];
         }
     }
-
-    
 }

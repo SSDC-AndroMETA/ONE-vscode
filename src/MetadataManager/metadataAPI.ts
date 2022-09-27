@@ -31,11 +31,7 @@ export class Metadata{
     public static register(context: vscode.ExtensionContext): void {
         const registrations = [
             vscode.commands.registerCommand('one.metadata.showMetadata', async () => {
-<<<<<<< HEAD
-                if(vscode.workspace.workspaceFolders === undefined) {return};
-=======
                 if(vscode.workspace.workspaceFolders === undefined) {return;}
->>>>>>> manager
                 const testUri: vscode.Uri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri,"while_000.log"); // 절대경로
                 console.log(await Metadata.getFileInfo(testUri));
                 // await Metadata.getRelationInfo(testUri);
@@ -284,15 +280,6 @@ export class Metadata{
         }
         return dataList;
     }
-    // public static d_getFilesUnderDir(path: string): string[] { // to Semi Jeong : is this function really needed?
-    //     if (Metadata.d_isDir(path)) {
-    //       // FIXME: what will be returned when we call?
-    //       return ['test/while_000.log', 'test/while_000 copy.log'];
-    //     }
-    //     return []; // 파일일 때
-    // }
-
-    //     return dataList;
 }
 
 

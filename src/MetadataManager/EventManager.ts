@@ -54,7 +54,11 @@ export class Mutex{
 /* istanbul ignore next */
 export class MetadataEventManager {
   private fileWatcher = vscode.workspace.createFileSystemWatcher(`**/*`); // glob pattern
+<<<<<<< HEAD
   private mutexLock:any;
+=======
+  private pathToHashObj:any;
+>>>>>>> manager
 
   public static didHideExtra: boolean = false;
 
@@ -97,9 +101,13 @@ export class MetadataEventManager {
       provider.fileWatcher.onDidChange(async uri => {
         provider.refresh('Change'); // test code
         console.log('onDidChange  '+uri.fsPath);
+<<<<<<< HEAD
         const unlock=await provider.mutexLock.lock();
         if(workspaceRoot){ await provider.changeEvent(uri);}
         unlock();
+=======
+        if(workspaceRoot){ await provider.changeEvent(uri);}
+>>>>>>> manager
       }),
       provider.fileWatcher.onDidDelete(async uri => { // To Semi Jeong
         // FIXME: declare PathToHash instance outside of the function (i.e. make instance member variable)
@@ -139,6 +147,7 @@ export class MetadataEventManager {
       provider.fileWatcher.onDidCreate(async uri => {
         provider.refresh('Create'); // test code
         console.log('onDidCreate  '+uri.fsPath);
+<<<<<<< HEAD
         MetadataEventManager.createUri=uri;       
         timerId=setTimeout(()=>{MetadataEventManager.createUri=undefined; console.log('test  '+ MetadataEventManager.createUri);},0);
 
@@ -163,6 +172,24 @@ export class MetadataEventManager {
           unlock();
         }
         }
+=======
+        MetadataEventManager.createUri=uri;
+        let relPath=vscode.workspace.asRelativePath(uri);
+        // case 1. [File] Contents change event (refer to pathToHash)
+        // case 2(ignore). [File] Move contents > Processing in Delete
+        // case 3(ignore). [Dir]  Move contents > Processing in Delete (reconginition Dir when Dir+File moved)
+        // case 4. [File] Copy many files
+        // case 5. [Dir]  Copy with files > Serch all the file in the Dir
+        // case 4. [File] Generate Product from ONE (processing like case 1 or ignore)
+        if(fs.statSync(uri.fsPath).isDirectory()){
+          await provider.createDirEvent(uri);
+        }
+        else if(Metadata.isValidFile(uri)){
+          if(provider.pathToHashObj.getPathToHash(uri)&&workspaceRoot){await provider.changeEvent(uri);}
+          else{await provider.createFileEvent(uri);}
+        }
+        timerId=setTimeout(()=>{MetadataEventManager.createUri=undefined; console.log('test  '+ MetadataEventManager.createUri);},0);
+>>>>>>> manager
       }),
     ];
 
@@ -170,7 +197,11 @@ export class MetadataEventManager {
   }
 
   constructor(private workspaceRoot: vscode.Uri | undefined, private _extensionKind: vscode.ExtensionKind) {
+<<<<<<< HEAD
     this.mutexLock=new Mutex();
+=======
+    PathToHash.getInstance().then(data=>{this.pathToHashObj=data;});
+>>>>>>> manager
   }
 
   refresh(message: string): void {
@@ -179,8 +210,13 @@ export class MetadataEventManager {
 
 
   async changeEvent(uri:vscode.Uri): Promise<void> {
+<<<<<<< HEAD
     // case 1. [File] Contents change event
     if(!Metadata.isValidFile(uri)) {return;}
+=======
+    if(!Metadata.isValidFile(uri)) {return;}
+    // case 1. [File] Contents change event
+>>>>>>> manager
     const relativePath = vscode.workspace.asRelativePath(uri);
 
     //(1) get beforehash and set afterhash
@@ -188,10 +224,16 @@ export class MetadataEventManager {
     const buffer = Buffer.from(await vscode.workspace.fs.readFile(uri)).toString();
     const afterhash: string = crypto.createHash('sha256').update(buffer).digest('hex');
 
+<<<<<<< HEAD
 
     //(2) deactivate changed hash object
     let metadata: any = await Metadata.getMetadata(beforehash);
     if(metadata && metadata[relativePath]) {
+=======
+    //(2) deactivate changed hash object
+    let metadata: any = await Metadata.getMetadata(beforehash);
+    if(Object.keys(metadata).length !== 0 && metadata[relativePath]) {
+>>>>>>> manager
         metadata[relativePath]["is_deleted"] = true;
         await Metadata.setMetadata(beforehash, metadata);
     }
@@ -216,9 +258,15 @@ export class MetadataEventManager {
     metadata[relativePath]["create_time"] = stats.birthtime;
     metadata[relativePath]["modified_time"] = stats.mtime;
     metadata[relativePath]["is_deleted"] = false;
+<<<<<<< HEAD
     await Metadata.setMetadata(afterhash, metadata);        
   }
 
+=======
+    await Metadata.setMetadata(afterhash, metadata);    
+  }
+  
+>>>>>>> manager
   public static getStats(uri:vscode.Uri) {
     return new Promise(function (resolve, reject) {
       fs.stat(uri.fsPath, function (err, stats) {
@@ -241,18 +289,29 @@ export class MetadataEventManager {
   async createFileEvent(uri:vscode.Uri){
     //(1) refer to getPathToHash
     let relPath=vscode.workspace.asRelativePath(uri);
+<<<<<<< HEAD
     const instance=await PathToHash.getInstance();
 
     //(2) insert PathToHash
     await instance.addPath(uri);
     let newHash=await instance.getPathToHash(uri);
+=======
+
+    //(2) insert PathToHash
+    await this.pathToHashObj.addPath(uri);
+    let newHash=await this.pathToHashObj.getPathToHash(uri);
+>>>>>>> manager
 
     //(3) Hash로 getMetadata
     let metadata=await Metadata.getMetadata(newHash);
     //(4) Metadata Exist (searching with Hash)? (activate | deactivate) : copy format 
     if(Object.keys(metadata).length !== 0){ // metadata exist
       if(metadata[relPath]){
+<<<<<<< HEAD
         if (!metadata[relPath]["is_deleted"]) {return;}; // path already activate. ignore this case
+=======
+        if (!metadata[relPath]["is_deleted"]) {return;} // path already activate. ignore this case
+>>>>>>> manager
         metadata[relPath]["is_deleted"]=false;  // path deactive > activate    
       }
       else{ // for copy format
@@ -260,8 +319,13 @@ export class MetadataEventManager {
         const keyResult=keyList.filter(key=> !metadata[key]["is_deleted"]); // find activate. or last key of KeyList;
 
         //data copy
+<<<<<<< HEAD
         let data=JSON.parse(JSON.stringify(metadata[keyList[keyList.length-1]]));
         if(keyResult.length){data=JSON.parse(JSON.stringify(metadata[keyResult[0]]));}
+=======
+        let data=metadata[keyList[keyList.length-1]];
+        if(keyResult.length){ data=metadata[keyResult[0]]; }
+>>>>>>> manager
         else {data["is_deleted"]=false;}
 
 
@@ -289,6 +353,9 @@ export class MetadataEventManager {
     }
     //(6) Metadata Generation
     await Metadata.setMetadata(newHash,metadata);
+<<<<<<< HEAD
     // Todo. [File] Generate Product from ONE (processing like case 1 or ignore)
+=======
+>>>>>>> manager
   }
 }

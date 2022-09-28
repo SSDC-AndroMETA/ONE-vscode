@@ -80,7 +80,6 @@ export class MetadataEventManager {
     }
 
     const provider = new MetadataEventManager();
-    // let timerId:NodeJS.Timeout | undefined=undefined;
 
     let registrations = [
       provider.fileWatcher.onDidChange(async uri => {

@@ -272,11 +272,10 @@ export class MetadataEventManager {
         const keyResult=keyList.filter(key=> !metadata[key]["is-deleted"]); // find activate. or last key of KeyList;
 
         //data copy
-        let data=JSON.parse(JSON.stringify(metadata[keyList[keyList.length-1]]));
-        if(keyResult.length){data=JSON.parse(JSON.stringify(metadata[keyResult[0]]));}
 
-        else {data["is-deleted"]=false;}
-
+        let data=metadata[keyList[keyList.length-1]];
+        if(keyResult.length){ data=metadata[keyResult[0]]; }
+        else {data["isDeleted"]=false;}
 
         //data update
         const stats: any = await Metadata.getStats(uri);
@@ -300,6 +299,7 @@ export class MetadataEventManager {
         "is-deleted": false,
       };
     }
+    Metadata.setBuildInfoMetadata(metadata[relPath], uri);
     //(6) Metadata Generation
     await Metadata.setMetadata(newHash,metadata);
     // Todo. [File] Generate Product from ONE (processing like case 1 or ignore)

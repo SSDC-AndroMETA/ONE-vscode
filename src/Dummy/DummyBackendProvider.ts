@@ -7,7 +7,9 @@ import {backendRegistrationApi} from '../Backend/API'
 import {DeviceSpec} from '../Backend/Spec';
 import {Version} from '../Backend/Version';
 import * as fs from 'fs';
-
+import * as cp from 'child_process';
+import {OneStorage} from '../OneExplorer/OneStorage';
+import { Metadata } from '../MetadataManager/metadataAPI';
 
 const which = require('which');
 
@@ -105,8 +107,27 @@ class MetadataToolchain extends Toolchain {
       oneccPath = '/home/one/onecc_test/bin/onecc';
     }
 
+    const cfgInfo = OneStorage.getCfgObj(_cfg);
+    console.log(cfgInfo?.rawObj);
+    if (cfgInfo) {
+      for (let product of cfgInfo.getProducts) {
+        Metadata.setBuildInfo(product.path, 'toolchain', this.info);
+        // TODO: Refine cfg data (delete input/output path, replace string 'True' to boolean...)
+        Metadata.setBuildInfo(product.path, 'cfg', cfgInfo.rawObj);
+      }
+    }
 
     const oneccRealPath = fs.realpathSync(oneccPath);
+    const process = cp.spawnSync(oneccRealPath, ['--version']);
+    if(process.status === 0) {
+      const result = Buffer.from(process.stdout).toString();
+      const oneccVersion = result.toString().split('\n')[0].split(' ')[2];
+      if (cfgInfo) {
+        for (let product of cfgInfo.getProducts) {
+          Metadata.setBuildInfo(product.path, 'onecc', oneccVersion);
+        }
+      }
+    }
     return new Command(oneccRealPath, ['-C', _cfg]);
   }
 }

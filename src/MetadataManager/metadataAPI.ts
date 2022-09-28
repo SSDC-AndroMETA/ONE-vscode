@@ -18,6 +18,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import { obtainWorkspaceRoot } from '../Utils/Helpers';
 import { PathToHash } from './pathToHash';
+import { ToolchainInfo } from '../Backend/Toolchain';
 
 interface Relation{
     "selected": string,
@@ -39,9 +40,44 @@ interface Data{
     "is-deleted" : boolean
 }
 
+type BuildInfoKeys = 'onecc' | 'toolchain' | 'cfg';
+
+interface BuildInfo {
+    'onecc': string,
+    'toolchain': ToolchainInfo | undefined,
+    'cfg': any
+}
 
 export class Metadata{
     constructor() { }
+    private static _buildInfoMap = new Map<string, BuildInfo>();
+
+    public static setBuildInfo(path: string, key: BuildInfoKeys, value: any) {
+        const relativePath = vscode.workspace.asRelativePath(path);
+        let info = this._buildInfoMap.get(relativePath);
+        if (info === undefined) {
+            info = {
+                onecc: '',
+                toolchain: undefined,
+                cfg: undefined
+            };
+            this._buildInfoMap.set(relativePath, info);
+        }
+        info[key] = value;
+    }
+
+    public static setBuildInfoMetadata(metadata: any, uri: vscode.Uri) {
+        const path = vscode.workspace.asRelativePath(uri);
+        const info = this._buildInfoMap.get(path);
+        if (info) {
+            metadata['oneccVersion'] = info['onecc'];
+            metadata['toolchainVersion'] = info['toolchain']?.version?.str();
+            metadata['cfgSettings'] = info['cfg'];
+        }
+
+        this._buildInfoMap.delete(path);
+        return info;
+    }
 
     public static async getFileHash(uri: vscode.Uri) {
         const instance = await PathToHash.getInstance();
@@ -168,7 +204,6 @@ export class Metadata{
         // console.log(`moveMetadataUnderFolder():`, fromUri, toUri);
         const pathToHash = await PathToHash.getInstance();
         const relativeToPath = vscode.workspace.asRelativePath(toUri);
-        // const relativeFromPath = vscode.workspace.asRelativePath(fromUri);
         const files = await vscode.workspace.findFiles(`${relativeToPath}/**/*`);
         for(let file of files) {
             const fileToPath = file.path;

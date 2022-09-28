@@ -52,11 +52,30 @@ export class PathToHash{
             if (type === 1) {
                 tempPathToHash[name] = await this.generateHash(vscode.Uri.joinPath(uri,"/"+name));
             } else if (type === 2 && name !== '.meta') {
-                const result = await this.rec(vscode.Uri.joinPath(uri, "/" + name));
+                const result = await this.getSubPathToHash(vscode.Uri.joinPath(uri, "/" + name));
                 tempPathToHash[name] = result;
             }
         }
         return tempPathToHash;
+    }
+
+    private async getSubPathToHash(uri: vscode.Uri) {
+        const obj: {[key: string]: any} = {};
+        let arrayList = await vscode.workspace.fs.readDirectory(uri);
+
+        for (const array of arrayList) {
+            const name: string = array[0];
+            const type: number = array[1];
+            
+            if (type === 1) {
+                obj[name] = await this.generateHash(vscode.Uri.joinPath(uri, "/" + name));
+            } else if (type === 2) {
+                const result = await this.getSubPathToHash(vscode.Uri.joinPath(uri, "/" + name));
+                obj[name] = result;
+            }
+        }
+
+        return obj;
     }
 
     public async validateMetadata(pathToHash : any){
@@ -65,65 +84,12 @@ export class PathToHash{
 
         // 2. Create metadata if pathToHash exists but does not have actual metadata files
         // 3. If pathToHash exists and there is a actual metadata file, but there is no path inside, create a path and data insde
-        for(let key in flattenPathToHash){
-            this.createMetadata(key, flattenPathToHash[key]);
-        }
+        
+        this.createMetadata(flattenPathToHash);
         
         // 4. Replace is_deleted with true for all metadata not in pathToHash
         await this.deleteMetadata(flattenPathToHash);
     }
-
-    public async deleteMetadata(flattenpathToHash : any){
-        if(vscode.workspace.workspaceFolders===undefined) {
-            return;
-        }
-        let baseUri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri,".meta/hash_objects");
-        let arrayList = await vscode.workspace.fs.readDirectory(baseUri);
-        for(const array of arrayList){
-            let hashFolderUri = vscode.Uri.joinPath(baseUri, array[0]);
-            let hashList = await vscode.workspace.fs.readDirectory(hashFolderUri);
-            for(const hashFile of hashList){
-                let hashUri = vscode.Uri.joinPath(hashFolderUri, hashFile[0]);
-                let metadata = JSON.parse(Buffer.from(await vscode.workspace.fs.readFile(hashUri)).toString());
-                let hash = array[0] + hashFile[0].split('.')[0];
-                for(const key in metadata){
-                    if(!metadata[key].isDeleted && flattenpathToHash[key] !== hash){
-                        metadata[key].isDeleted = true;
-                    }
-                }
-
-                Metadata.setMetadata(hash, metadata);
-            }
-        }
-    }
-
-    public async createMetadata (path: string, hash: string){
-        
-        let metadata: any = await Metadata.getMetadata(hash);
-    
-        if(Object.keys(metadata).length === 0){
-            await Metadata.setMetadata(hash, {});
-
-        }else if(metadata[path]){
-            return;
-        }
-        
-        const filename: any = path.split('/').pop();
-        if(vscode.workspace.workspaceFolders === undefined) {
-            return;
-        }
-        const stats: any = await MetadataEventManager.getStats(vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, path));
-        metadata[path] = {};
-        metadata[path]["name"] = filename;
-        metadata[path]["fileExtension"] = filename.split(".")[1];
-        metadata[path]["createTime"] = stats.birthtime;
-        metadata[path]["modifiedTime"] = stats.mtime;
-        metadata[path]["isDeleted"] = false;
-        await Metadata.setMetadata(hash, metadata);  
-
-    }
-
-    
 
     public async flatPathToHash(pathToHash: any){
         let temp :any = {};
@@ -152,27 +118,60 @@ export class PathToHash{
         }
         return temp;
     }
+
+    public async createMetadata (flattenPathToHash: any){
+        
+        for(let path in flattenPathToHash){
+            const hash = flattenPathToHash[path];
+
+            let metadata: any = await Metadata.getMetadata(hash);
     
-    private async rec(uri: vscode.Uri) {
-        const obj: {[key: string]: any} = {};
-        let arrayList = await vscode.workspace.fs.readDirectory(uri);
+            if(Object.keys(metadata).length === 0){
+                await Metadata.setMetadata(hash, {});
 
-        for (const array of arrayList) {
-            const name: string = array[0];
-            const type: number = array[1];
-            
-            if (type === 1) {
-                obj[name] = await this.generateHash(vscode.Uri.joinPath(uri, "/" + name));
-            } else if (type === 2) {
-                const result = await this.rec(vscode.Uri.joinPath(uri, "/" + name));
-                obj[name] = result;
+            }else if(metadata[path]){
+                return;
             }
+            
+            const filename: any = path.split('/').pop();
+            if(vscode.workspace.workspaceFolders === undefined) {
+                return;
+            }
+            const stats: any = await MetadataEventManager.getStats(vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, path));
+            metadata[path] = {};
+            metadata[path]["name"] = filename;
+            metadata[path]["fileExtension"] = filename.split(".")[1];
+            metadata[path]["createTime"] = stats.birthtime;
+            metadata[path]["modifiedTime"] = stats.mtime;
+            metadata[path]["isDeleted"] = false;
+            await Metadata.setMetadata(hash, metadata);  
         }
-
-        return obj;
     }
 
-    
+    public async deleteMetadata(flattenpathToHash : any){
+        if(vscode.workspace.workspaceFolders===undefined) {
+            return;
+        }
+        let baseUri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri,".meta/hash_objects");
+        let arrayList = await vscode.workspace.fs.readDirectory(baseUri);
+        for(const array of arrayList){
+            let hashFolderUri = vscode.Uri.joinPath(baseUri, array[0]);
+            let hashList = await vscode.workspace.fs.readDirectory(hashFolderUri);
+            for(const hashFile of hashList){
+                let hashUri = vscode.Uri.joinPath(hashFolderUri, hashFile[0]);
+                let metadata = JSON.parse(Buffer.from(await vscode.workspace.fs.readFile(hashUri)).toString());
+                let hash = array[0] + hashFile[0].split('.')[0];
+                for(const key in metadata){
+                    if(!metadata[key].isDeleted && flattenpathToHash[key] !== hash){
+                        metadata[key].isDeleted = true;
+                    }
+                }
+
+                Metadata.setMetadata(hash, metadata);
+            }
+        }
+    }
+
 
     public getPathToHash(uri: vscode.Uri ) {
         let path = vscode.workspace.asRelativePath(uri);
@@ -196,10 +195,7 @@ export class PathToHash{
     }
 
     public isFile(uri: vscode.Uri): boolean {
-        const relativeFolderPath = vscode.workspace.asRelativePath(uri);
-        // console.log(`PathToHash::isFile():: relativeFolderPath=${relativeFolderPath}`);
         const hash = this.getPathToHash(uri);
-        // console.log(typeof(hash) === 'string');
         return typeof(hash) === 'string';
     }
 
@@ -209,16 +205,13 @@ export class PathToHash{
 
     public getFilesUnderFolder(uri: vscode.Uri): vscode.Uri[] {
         const relativeFolderPath = vscode.workspace.asRelativePath(uri);
-        // console.log(`PathToHash::getFilesUnderFolder():: relativeFolderPath=${relativeFolderPath}`);
         const folder = this.getPathToHash(uri);
         const files: vscode.Uri[] = [];
         if (typeof (folder) === 'string') {
             // not a folder
-            // console.log(`PathToHash::getFilesUnderFolder()::${relativeFolderPath} is not a folder`);
             return files;
         }
         for (const name in folder) {
-            // console.log(`PathToHash::getFilesUnderFolder():: name=${name}`);
             files.push(vscode.Uri.joinPath(uri, name));
         }
 
@@ -230,7 +223,6 @@ export class PathToHash{
         const path = vscode.workspace.asRelativePath(uri);
         const paths = path.split('/');
         let content: any = await this.generateHash(uri);
-        // console.log(`PathToHash::addPath: paths=${paths}`);
         let obj = this.pathToHash;
         let idx = 0;
         for (let path = paths[idx]; idx < paths.length - 1; path = paths[++idx]) {
@@ -253,8 +245,6 @@ export class PathToHash{
     }
 
     public deletePath(uri: vscode.Uri) {
-        // console.log('PathToHash::deletePath=================');
-        // console.log(uri);
         const path = vscode.workspace.asRelativePath(uri);
         const paths = path.split('/');
 
@@ -269,16 +259,10 @@ export class PathToHash{
             // already deleted
             return;
         }
-        // console.log(`1. pathToHash =`);
-        // console.log(this.pathToHash);
         delete obj[paths[paths.length-1]];
-        // console.log(`2. pathToHash (after deleting the file ${paths[paths.length-1]}) =`);
-        // console.log(this.pathToHash);
         if (paths.length > 1) {
             this.deleteEmptyFolder(this.pathToHash, paths, 0);
         }
-        // console.log(`3. pathToHash (after deleting empty folders) =`);
-        // console.log(this.pathToHash);
     }
 
     private deleteEmptyFolder(parent: any, paths: string[], idx: number) {

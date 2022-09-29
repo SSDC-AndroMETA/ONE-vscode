@@ -109,7 +109,7 @@ export class MetadataEventManager {
           await provider.createDirEvent(uri);
         }
         else if(Metadata.isValidFile(uri)){
-          if(instance.getPathToHash(uri)&&workspaceRoot){
+          if(instance.get(uri)&&workspaceRoot){
             //case 2. [File] Contents change event in Ubuntu terminal (refer to pathToHash)
             await provider.changeEvent(uri);
           }
@@ -202,7 +202,7 @@ export class MetadataEventManager {
 
     //(2) insert PathToHash
     await instance.addPath(uri);
-    let newHash=await instance.getPathToHash(uri);
+    let newHash=await instance.get(uri);
 
     //(3) Hash로 getMetadata
     let metadata=await Metadata.getMetadata(newHash);

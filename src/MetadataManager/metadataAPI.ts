@@ -58,7 +58,9 @@ export class Metadata{
     }
 
     // deactivate metadata
-    public static async disableMetadata(uri: vscode.Uri) {
+    public static async disableMetadata(input:{[key:string]:any}) {
+        console.log("Delete Start!!!!")
+        const uri=input["uri"];
         const relativePath = vscode.workspace.asRelativePath(uri);
         if(!Metadata.isValidFile(uri)) {
             return;
@@ -90,7 +92,9 @@ export class Metadata{
     }
 
     // deactivate all metadata under the folder
-    public static async disableMetadataUnderFolder(uri: vscode.Uri) {
+    public static async disableMetadataUnderFolder(input:{[key:string]:any}) {
+        console.log("Delete Start!!!!")
+        const uri=input["uri"];
         // if it is a folder, deactivate all of its child files
         const pathToHash = await PathToHash.getInstance();
         for(let f of pathToHash.getFilesUnderFolder(uri)) {
@@ -102,7 +106,10 @@ export class Metadata{
         }
     }
 
-    public static async moveMetadata(oldUri: vscode.Uri, newUri: vscode.Uri) {
+    public static async moveMetadata(input:{[key:string]:any}) {
+        console.log("Move Start!!!!")
+        const oldUri=input["oldUri"];
+        const newUri=input["newUri"];
         console.log('Metadata::moveMetadata()===========');
         const oldRelativePath = vscode.workspace.asRelativePath(oldUri);
         const newRelativePath = vscode.workspace.asRelativePath(newUri);
@@ -129,11 +136,12 @@ export class Metadata{
         if (metadata === undefined) {
             return;
         }
-        const data = metadata[oldRelativePath];
+        const data = JSON.parse(JSON.stringify(metadata[oldRelativePath]));
         if (data === undefined) {
             return;
         }
         
+        data["name"]=newRelativePath.split('/').pop();
         // 3. Move metadata to the new path
         delete metadata[oldRelativePath];
         metadata[newRelativePath] = data;
@@ -147,7 +155,10 @@ export class Metadata{
     /**
      * Move metadata of the files and folders under the fromUri folder to the toUri folder
      */
-    public static async moveMetadataUnderFolder(fromUri: vscode.Uri, toUri: vscode.Uri) {
+    public static async moveMetadataUnderFolder(input:{[key:string]:any}) {
+        console.log("Move Start!!!!")
+        const fromUri=input["fromUri"];
+        const toUri=input["toUri"]
         console.log(`moveMetadataUnderFolder():`, fromUri, toUri);
         const pathToHash = await PathToHash.getInstance();
         const relativeToPath = vscode.workspace.asRelativePath(toUri);
@@ -158,9 +169,9 @@ export class Metadata{
             const fileFromUri = vscode.Uri.joinPath(fromUri, fileToPath.substring(fileToPath.lastIndexOf(toUri.path) + toUri.path.length));
             console.log('moveMetadataUnderFolder:: fileFromPath=', fileFromUri);
             if (!pathToHash.isFile(fileFromUri)) {
-                await Metadata.moveMetadataUnderFolder(fileFromUri, file);
+                await Metadata.moveMetadataUnderFolder({"fromUri":fileFromUri, "toUri":file});
             } else if (Metadata.isValidFile(file)) {
-                await Metadata.moveMetadata(fileFromUri, file);
+                await Metadata.moveMetadata({"oldUri":fileFromUri, "newUri":file});
             }
         }
     }

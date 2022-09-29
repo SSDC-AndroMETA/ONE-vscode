@@ -27,25 +27,86 @@ import { Logger } from '../Utils/Logger';
 import { PathToHash } from './pathToHash';
 
 import * as crypto from 'crypto';
+import { resolve } from 'dns';
 // import {ArtifactAttr} from './ArtifactLocator';
 // import {OneStorage} from './OneStorage';
 
 
-export class Mutex{
-  private mutex = Promise.resolve();
+// export class Mutex{
+//   private mutex = Promise.resolve();
 
-  lock(): PromiseLike<()=>void>{
-    let begin: (unlock:()=>void)=> void = unlock =>{};
+//   lock(): PromiseLike<()=>void>{
+//     let begin: (unlock:()=>void)=> void = unlock =>{};
 
-    this.mutex=this.mutex.then(()=>{
-      return new Promise(begin);
+//     this.mutex=this.mutex.then(()=>{
+//       return new Promise(begin);
+//     });
+
+//     return new Promise(res=>{
+//       begin=res;
+//     })
+//   }
+
+// }
+
+class EventQueue{
+  private inProgress:boolean=false;
+  private queue:{method:any, input:{[key: string]:any}}[]=[];
+
+  constructor(){this.queue=[];}
+  
+  enqueue(method:any, input:{[key: string]: any}):void{
+    this.queue.push({
+      method:method,
+      input:input
     });
-
-    return new Promise(res=>{
-      begin=res;
-    })
+    this.autoAction();
   }
 
+  front() {
+    return this.queue[0];
+  }
+  dequeue() {
+    this.queue.shift();
+  }
+  
+  clear(){
+    this.inProgress=false;
+    this.queue=[];
+  }
+
+  isEmpty(){
+    return this.queue.length===0;
+  }
+  
+  autoAction(){
+    if(this.inProgress===false){
+      this.inProgress=true;
+      this.action();
+    }
+  }
+  
+  async action(){
+    const result=await this.front().method();
+    console.log(result);
+    this.dequeue();
+    
+    if(this.isEmpty()){
+      this.clear();
+    }
+    else {
+      this.action();
+    }
+  }
+}
+
+class EventBuffer{
+  private Queue=new EventQueue();
+  constructor(){}
+  public setEvent(request:any, input:{[key: string]:any}){
+    this.Queue.enqueue(()=>{return new Promise(resolve=>{request(input).then((res:any) =>resolve(res))})
+    },input);
+  }
 }
 
 
@@ -53,7 +114,7 @@ export class Mutex{
 /* istanbul ignore next */
 export class MetadataEventManager {
   private fileWatcher = vscode.workspace.createFileSystemWatcher(`**/*`); // glob pattern
-  private mutexLock:any;
+  private eventBuffer=new EventBuffer();
 
   public static didHideExtra: boolean = false;
 
@@ -79,49 +140,45 @@ export class MetadataEventManager {
       }
     }
 
-    const provider = new MetadataEventManager(workspaceRoot, context.extension.extensionKind);
-    let timerId:NodeJS.Timeout | undefined=undefined;
+    const provider = new MetadataEventManager();
 
     let registrations = [
       provider.fileWatcher.onDidChange(async uri => {
         provider.refresh('Change'); // test code
         console.log('onDidChange  '+uri.fsPath);
-        const unlock=await provider.mutexLock.lock();
-        if(workspaceRoot){ await provider.changeEvent(uri);}
-        unlock();
+        if(workspaceRoot){ provider.eventBuffer.setEvent(provider.changeEvent,{"uri":uri});}
       }),
       provider.fileWatcher.onDidDelete(async uri => { // To Semi Jeong
         // FIXME: declare PathToHash instance outside of the function (i.e. make instance member variable)
         const instance = await PathToHash.getInstance();
         if (!instance.exists(uri)) {{return;}}
         console.log('onDidDelete::', uri); provider.refresh('Delete'); // test code
-        const path = uri.path;
-        if (MetadataEventManager.createUri) {
-          const newUri = MetadataEventManager.createUri;
+        const newUri=MetadataEventManager.createUri;
+        if (newUri) {
+          console.log('++++');
+          MetadataEventManager.createUri=undefined;
           // The file/folder is moved/renamed
           if (fs.statSync(newUri.path).isDirectory()) {
             // case 4. [Dir]+Path       | move > search (delete & new)
-            const unlock=await provider.mutexLock.lock();
-            await Metadata.moveMetadataUnderFolder(uri, newUri);
-            unlock();
+            provider.eventBuffer.setEvent(Metadata.moveMetadataUnderFolder,{"fromUri":uri,"toUri":newUri});
           } else {
             // case 3. [File]+Path      | move (delete & new)
-            const unlock=await provider.mutexLock.lock();
-            await Metadata.moveMetadata(uri, newUri);
-            unlock();
+            // const unlock=await provider.mutexLock.lock();
+            provider.eventBuffer.setEvent(Metadata.moveMetadata,{"oldUri":uri,"newUri":newUri});
+            // unlock();
           }
         } else {
           const pathToHash = await PathToHash.getInstance();
           if (!pathToHash.isFile(uri)) {
             // case 2. [Dir]+undefined  | deactive > search
-            const unlock=await provider.mutexLock.lock();
-            await Metadata.disableMetadataUnderFolder(uri);
-            unlock();
+            // const unlock=await provider.mutexLock.lock();
+            provider.eventBuffer.setEvent(Metadata.disableMetadataUnderFolder,{"uri":uri});
+            // unlock();
           } else {
             // case 1. [File]+undefined | deactive
-            const unlock=await provider.mutexLock.lock();
-            await Metadata.disableMetadata(uri);
-            unlock();
+            // const unlock=await provider.mutexLock.lock();
+            provider.eventBuffer.setEvent(Metadata.disableMetadata,{"uri":uri});
+            // unlock();
           }
         }
       }),
@@ -129,37 +186,40 @@ export class MetadataEventManager {
         provider.refresh('Create'); // test code
         console.log('onDidCreate  '+uri.fsPath);
         MetadataEventManager.createUri=uri;       
-        timerId=setTimeout(()=>{MetadataEventManager.createUri=undefined; console.log('test  '+ MetadataEventManager.createUri);},0);
+        // timerId=setTimeout(()=>{MetadataEventManager.createUri=undefined; console.log('test  '+ MetadataEventManager.createUri);},0);
 
         const instance= await PathToHash.getInstance();
         if(fs.statSync(uri.fsPath).isDirectory()){
           // case 1. [Dir]  Copy with files > Serch all the file in the Dir
-          const unlock=await provider.mutexLock.lock();
-          await provider.createDirEvent(uri);
-          unlock();
+          // const unlock=await provider.mutexLock.lock();
+          provider.eventBuffer.setEvent(provider.createDirEvent,{"uri":uri});
+          // unlock();
         }
         else if(Metadata.isValidFile(uri)){
           if(instance.getPathToHash(uri)&&workspaceRoot){
             //case 2. [File] Contents change event in Ubuntu terminal (refer to pathToHash)
-            const unlock=await provider.mutexLock.lock();
-            await provider.changeEvent(uri);
-            unlock();
+            // const unlock=await provider.mutexLock.lock();
+            provider.eventBuffer.setEvent(provider.changeEvent,{"uri":uri});
+            // unlock();
           }
-        else{
-          // case 3. [File] File generation event
-          const unlock=await provider.mutexLock.lock();
-          await provider.createFileEvent(uri);
-          unlock();
+          else{
+            // case 3. [File] File generation event
+            // const unlock=await provider.mutexLock.lock();
+            provider.eventBuffer.setEvent(provider.createFileEvent,{"uri":uri});
+            // unlock();
+          }
         }
-        }
+        provider.eventBuffer.setEvent(provider.setundef,{});
       }),
     ];
 
     registrations.forEach(disposable => context.subscriptions.push(disposable));
   }
-
-  constructor(private workspaceRoot: vscode.Uri | undefined, private _extensionKind: vscode.ExtensionKind) {
-    this.mutexLock=new Mutex();
+  async setundef(input:{[key:string]:any}){
+    console.log("Reset Start!");
+    MetadataEventManager.createUri=undefined;}
+  constructor() {
+    // this.mutexLock=new Mutex();
   }
 
   refresh(message: string): void {
@@ -167,7 +227,10 @@ export class MetadataEventManager {
   }
 
 
-  async changeEvent(uri:vscode.Uri): Promise<void> {
+  async changeEvent(input:{[key:string]:any}): Promise<void> {
+    console.log("Change Start!");
+    const uri=input["uri"];
+
     if(!Metadata.isValidFile(uri)) {return;}
     // case 1. [File] Contents change event
     const relativePath = vscode.workspace.asRelativePath(uri);
@@ -218,7 +281,9 @@ export class MetadataEventManager {
     });
   }
 
-  async createDirEvent(uri:vscode.Uri){
+  async createDirEvent(input:{[key:string]:any}){
+    console.log("Create Start!!!!")
+    const uri=input["uri"];
     //(1) call search
     let fileList=await vscode.workspace.findFiles('**'+uri.fsPath+'/*.{pb,log,onnx,tflite,circle,cfg}');
     fileList.forEach((uri)=>{
@@ -226,7 +291,9 @@ export class MetadataEventManager {
     });
   }
 
-  async createFileEvent(uri:vscode.Uri){
+  async createFileEvent(input:{[key:string]:any}){
+    console.log("Create Start!!!!")
+    const uri=input["uri"];
     //(1) refer to getPathToHash
     let relPath=vscode.workspace.asRelativePath(uri);
     const instance=await PathToHash.getInstance();

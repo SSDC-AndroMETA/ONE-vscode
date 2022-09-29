@@ -216,6 +216,8 @@ export class MetadataEventManager {
     }
     
     metadata = await MetadataEventManager.createDefaultMetadata(uri, metadata);
+    Metadata.setBuildInfoMetadata(metadata[relativePath], uri);
+    await Metadata.setRelationInfo(uri);
 
     await Metadata.setMetadata(afterhash, metadata);    
   }
@@ -300,6 +302,7 @@ export class MetadataEventManager {
       };
     }
     Metadata.setBuildInfoMetadata(metadata[relPath], uri);
+    await Metadata.setRelationInfo(uri);
     //(6) Metadata Generation
     await Metadata.setMetadata(newHash,metadata);
     // Todo. [File] Generate Product from ONE (processing like case 1 or ignore)

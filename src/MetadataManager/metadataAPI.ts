@@ -51,8 +51,71 @@ interface BuildInfo {
 export class Metadata{
     constructor() { }
     private static _buildInfoMap = new Map<string, BuildInfo>();
+    private static _childToParentMap = new Map<string, string>();
 
-    public static setBuildInfo(path: string, key: BuildInfoKeys, value: any) {
+    public static setRelationInfoMap(path: string, parentPath: string) {
+        this._childToParentMap.set(path, parentPath);
+    }
+
+    public static async setRelationInfo(uri: vscode.Uri) {
+        const path = uri.path;
+        const relation = await this.readJsonFile('relation');
+        const parentPath = this._childToParentMap.get(path);
+        if(parentPath === undefined) {
+            return;
+        }
+        const hash = await this.getFileHash(uri);
+        if(hash === undefined) {
+            return;
+        }
+
+        let parentHash = await this.getFileHash(vscode.Uri.parse(parentPath));
+        if(parentHash === undefined) {
+            parentHash = '';
+        }
+        let data = relation[hash];
+        if(data === undefined) {
+            data = {children: []};
+        }
+        data.parent = parentHash;
+        relation[hash] = data;
+
+        let parentData = relation[parentHash];
+        if(parentData === undefined) {
+            parentData = {parent: '', children: []};
+        }
+        if(!parentData.children.includes(hash)) {
+            parentData.children.push(hash);
+        }
+        relation[parentHash] = parentData;
+
+        await this.saveJsonFile('relation', relation);
+    }
+
+    public static async saveJsonFile(name: string, data: any) {
+        if (vscode.workspace.workspaceFolders === undefined) {
+            return;
+        }
+
+        const uri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, '.meta', name + '.json');
+        await vscode.workspace.fs.writeFile(uri, Buffer.from(JSON.stringify(data, null, 4),'utf8'));
+    }
+
+    public static async readJsonFile(name: string) {
+        if (vscode.workspace.workspaceFolders === undefined) {
+            return;
+        }
+
+        const uri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, '.meta', name + '.json');
+        if(!fs.existsSync(uri.fsPath)) {
+            await vscode.workspace.fs.writeFile(uri, Buffer.from(JSON.stringify({}, null, 4),'utf8'));
+            return {};
+        }
+        const json: any = JSON.parse(Buffer.from(await vscode.workspace.fs.readFile(uri)).toString());
+        return json;
+    }
+
+    public static setBuildInfoMap(path: string, key: BuildInfoKeys, value: any) {
         const relativePath = vscode.workspace.asRelativePath(path);
         let info = this._buildInfoMap.get(relativePath);
         if (info === undefined) {
@@ -343,5 +406,3 @@ export class Metadata{
         });
       }
 }
-
-

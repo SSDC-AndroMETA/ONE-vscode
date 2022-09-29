@@ -36,7 +36,7 @@ class DummyCompiler implements Compiler {
   }
   getToolchains(toolchainType: string, start: number, count: number): Toolchains {
     const array = new Array<Toolchain>();
-    const toolchainInfo = new ToolchainInfo("metadata toolchain", "Toolchain for metadata", new Version(1, 2, 3));
+    const toolchainInfo = new ToolchainInfo("metadata toolchain", "Toolchain for metadata", new Version(0, 1, 0));
     array.push(new MetadataToolchain(toolchainInfo));
     return array;
     // const array = new Array<Toolchain>();
@@ -46,7 +46,7 @@ class DummyCompiler implements Compiler {
   }
   getInstalledToolchains(toolchainType: string): Toolchains {
     const array = new Array<Toolchain>();
-    const toolchainInfo = new ToolchainInfo("metadata toolchain", "Toolchain for metadata", new Version(1, 2, 3));
+    const toolchainInfo = new ToolchainInfo("metadata toolchain", "Toolchain for metadata", new Version(0, 1, 0));
     array.push(new MetadataToolchain(toolchainInfo));
     return array;
     // const array = new Array<Toolchain>();
@@ -68,7 +68,7 @@ class DummyExecutor implements Executor {
   }
   toolchains(): Toolchains {
     const array = new Array<Toolchain>();
-    const toolchainInfo = new ToolchainInfo("metadata toolchain", "Toolchain for metadata", new Version(1, 2, 3));
+    const toolchainInfo = new ToolchainInfo("metadata toolchain", "Toolchain for metadata", new Version(0, 1, 0));
     array.push(new MetadataToolchain(toolchainInfo));
     return array;
   }
@@ -111,9 +111,39 @@ class MetadataToolchain extends Toolchain {
     console.log(cfgInfo?.rawObj);
     if (cfgInfo) {
       for (let product of cfgInfo.getProducts) {
-        Metadata.setBuildInfo(product.path, 'toolchain', this.info);
+        Metadata.setBuildInfoMap(product.path, 'toolchain', this.info);
         // TODO: Refine cfg data (delete input/output path, replace string 'True' to boolean...)
-        Metadata.setBuildInfo(product.path, 'cfg', cfgInfo.rawObj);
+        Metadata.setBuildInfoMap(product.path, 'cfg', cfgInfo.rawObj);
+      }
+      
+      const enabledStep = new Set<string>();
+      for(let [key, value] of Object.entries(cfgInfo.rawObj)) {
+        console.log(key);
+        console.log(value);
+        if(key === 'onecc') {
+          for(let [step, isEnabled] of Object.entries(value)) {
+            if(isEnabled === 'True') {
+              console.log(step,"added");
+              enabledStep.add(step);
+            }
+          }
+        } else if(enabledStep.has(key)) {
+          /* eslint-disable */
+          console.log(value['input_path']);
+          console.log(value['output_path']);
+          const inputPath = value['input_path'];
+          const outputPath = value['output_path'];
+          // FIXME: consider when the input path and the output path is same
+          if(inputPath && outputPath && inputPath !== outputPath) {
+            // TODO: set relation
+            console.log('set relation info map')
+            Metadata.setRelationInfoMap(outputPath, inputPath);
+            if(outputPath.split('.').pop() === 'circle') {
+              Metadata.setRelationInfoMap(outputPath+'.log', outputPath);
+            }
+          }
+          /* eslint-enable */
+        }
       }
     }
 
@@ -124,7 +154,7 @@ class MetadataToolchain extends Toolchain {
       const oneccVersion = result.toString().split('\n')[0].split(' ')[2];
       if (cfgInfo) {
         for (let product of cfgInfo.getProducts) {
-          Metadata.setBuildInfo(product.path, 'onecc', oneccVersion);
+          Metadata.setBuildInfoMap(product.path, 'onecc', oneccVersion);
         }
       }
     }

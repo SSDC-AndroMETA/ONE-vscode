@@ -174,7 +174,7 @@ export class MetadataEventManager {
     metadata[relativePath]["name"] = filename;
 
     metadata[relativePath]["file-extension"] = filename.split(".").at(-1);
-    metadata[relativePath]["createTime"] = stats.birthtime;
+    metadata[relativePath]["create-time"] = stats.birthtime;
     metadata[relativePath]["modified-time"] = stats.mtime;
     metadata[relativePath]["is-deleted"] = false;
 

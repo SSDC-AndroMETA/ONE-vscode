@@ -292,5 +292,3 @@ export class Metadata{
         return dataList;
     }
 }
-
-

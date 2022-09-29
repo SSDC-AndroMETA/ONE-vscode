@@ -1,5 +1,20 @@
+/*
+ * Copyright (c) 2022 Samsung Electronics Co., Ltd. All Rights Reserved
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import * as vscode from 'vscode';
-import * as crypto from 'crypto';
 import * as fs from 'fs';
 import { obtainWorkspaceRoot } from '../Utils/Helpers';
 import { PathToHash } from './pathToHash';
@@ -19,14 +34,14 @@ interface Node{
 interface Data{
     "path": string,
     "name": string,
-    "onecc_version"?: string,
-    "toolchain_version"?: string,
-    "is_deleted" : boolean
+    "oneccVersion"?: string,
+    "toolchainVersion"?: string,
+    "isDeleted" : boolean
 }
 
 
 export class Metadata{
-    private _disposables: vscode.Disposable[] = [];
+    // private _disposables: vscode.Disposable[] = [];
     constructor() { }
     public static register(context: vscode.ExtensionContext): void {
         const registrations = [
@@ -45,16 +60,20 @@ export class Metadata{
 
     public static async getFileHash(uri: vscode.Uri) {
         const instance = await PathToHash.getInstance();
-        const hash = instance.getPathToHash(uri);
+        const hash = instance.get(uri);
         return hash;
     }
 
     //get metadata of file by path
     public static async getFileInfo(uri: vscode.Uri) {
         const instance = await PathToHash.getInstance();
-        const hash = instance.getPathToHash(uri);
+        const hash = instance.get(uri);
         let metadata = await this.getMetadata(hash);
+        if(Object.keys(metadata).length !== 0){
         return metadata[vscode.workspace.asRelativePath(uri).toString()];
+        }else{
+            return null;
+        }
     }
 
     // deactivate metadata
@@ -68,7 +87,7 @@ export class Metadata{
         
         const pathToHash = await PathToHash.getInstance();
         // step 1. Get hash value from pathToHash
-        const hash = pathToHash.getPathToHash(uri);
+        const hash = pathToHash.get(uri);
         if (hash === undefined) {
             return;
         }
@@ -83,7 +102,7 @@ export class Metadata{
         const data = metadata[relativePath];
         if(data) {
             // step 4. If exists, deactivate (set 'is_deleted') that path.
-            metadata[relativePath]["is_deleted"] = true;
+            metadata[relativePath]["isDeleted"] = true;
             await Metadata.setMetadata(hash, metadata);
 
             // step 5. Update pathToHash
@@ -93,8 +112,8 @@ export class Metadata{
 
     // deactivate all metadata under the folder
     public static async disableMetadataUnderFolder(input:{[key:string]:any}) {
-        console.log("Delete Start!!!!")
         const uri=input["uri"];
+
         // if it is a folder, deactivate all of its child files
         const pathToHash = await PathToHash.getInstance();
         for(let f of pathToHash.getFilesUnderFolder(uri)) {
@@ -107,10 +126,11 @@ export class Metadata{
     }
 
     public static async moveMetadata(input:{[key:string]:any}) {
-        console.log("Move Start!!!!")
+
         const oldUri=input["oldUri"];
         const newUri=input["newUri"];
-        console.log('Metadata::moveMetadata()===========');
+
+        // console.log('Metadata::moveMetadata()===========');
         const oldRelativePath = vscode.workspace.asRelativePath(oldUri);
         const newRelativePath = vscode.workspace.asRelativePath(newUri);
         if(Metadata.isValidFile(oldUri) && !Metadata.isValidFile(newUri)) {
@@ -125,7 +145,7 @@ export class Metadata{
 
         // 1. Get hash from pathToHash
         const pathToHash = await PathToHash.getInstance();
-        const hash = pathToHash.getPathToHash(oldUri);
+        const hash = pathToHash.get(oldUri);
         if (hash === undefined) {
             return;
         }
@@ -156,18 +176,18 @@ export class Metadata{
      * Move metadata of the files and folders under the fromUri folder to the toUri folder
      */
     public static async moveMetadataUnderFolder(input:{[key:string]:any}) {
-        console.log("Move Start!!!!")
         const fromUri=input["fromUri"];
         const toUri=input["toUri"]
-        console.log(`moveMetadataUnderFolder():`, fromUri, toUri);
+
+        // console.log(`moveMetadataUnderFolder():`, fromUri, toUri);
         const pathToHash = await PathToHash.getInstance();
         const relativeToPath = vscode.workspace.asRelativePath(toUri);
-        const relativeFromPath = vscode.workspace.asRelativePath(fromUri);
+        // const relativeFromPath = vscode.workspace.asRelativePath(fromUri);
         const files = await vscode.workspace.findFiles(`${relativeToPath}/**/*`);
         for(let file of files) {
             const fileToPath = file.path;
             const fileFromUri = vscode.Uri.joinPath(fromUri, fileToPath.substring(fileToPath.lastIndexOf(toUri.path) + toUri.path.length));
-            console.log('moveMetadataUnderFolder:: fileFromPath=', fileFromUri);
+            // console.log('moveMetadataUnderFolder:: fileFromPath=', fileFromUri);
             if (!pathToHash.isFile(fileFromUri)) {
                 await Metadata.moveMetadataUnderFolder({"fromUri":fileFromUri, "toUri":file});
             } else if (Metadata.isValidFile(file)) {
@@ -185,7 +205,7 @@ export class Metadata{
     //get metadata of file by path
     public static async getRelationInfo(uri: vscode.Uri) {
         const instance = await PathToHash.getInstance();
-        const nowHash = instance.getPathToHash(uri);
+        const nowHash = instance.get(uri);
         if (vscode.workspace.workspaceFolders === undefined) {
             return;
         }
@@ -256,7 +276,8 @@ export class Metadata{
         if (vscode.workspace.workspaceFolders !== undefined) {
             const metaUri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, `.meta/hash_objects/${hash.substring(0, 2)}/${hash.substring(2)}.json`);
             if(!fs.existsSync(metaUri.fsPath)) {
-                await vscode.workspace.fs.writeFile(metaUri,Buffer.from(JSON.stringify({}, null, 4),'utf8'));
+                // await vscode.workspace.fs.writeFile(metaUri,Buffer.from(JSON.stringify({}, null, 4),'utf8'));
+                this.setMetadata(hash, {});
                 return {};
             }
             else {
@@ -283,12 +304,14 @@ export class Metadata{
             const data: Data = {
                 "path": keys[i],
                 "name": element.name,
-                "onecc_version": element.onecc_version,
-                "toolchain_version": element.toolchain_version,
-                "is_deleted":element.is_deleted
+                "oneccVersion": element.oneccVersion,
+                "toolchainVersion": element.toolchainVersion,
+                "isDeleted":element.isDeleted
             };
             dataList.push(data);
         }
         return dataList;
     }
 }
+
+

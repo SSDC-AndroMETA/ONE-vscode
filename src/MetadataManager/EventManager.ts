@@ -32,7 +32,6 @@ import * as crypto from 'crypto';
 
 
 
-
 /* istanbul ignore next */
 export class MetadataEventManager {
   private fileWatcher = vscode.workspace.createFileSystemWatcher(`**/*`); // glob pattern
@@ -63,7 +62,6 @@ export class MetadataEventManager {
     }
 
     const provider = new MetadataEventManager();
-    // let timerId:NodeJS.Timeout | undefined=undefined;
 
     let registrations = [
       provider.fileWatcher.onDidChange(async uri => {
@@ -76,7 +74,7 @@ export class MetadataEventManager {
         const instance = await PathToHash.getInstance();
         if (!instance.exists(uri)) {{return;}}
         console.log('onDidDelete::', uri); provider.refresh('Delete'); // test code
-        const path = uri.path;
+        // const path = uri.path;
         if (MetadataEventManager.createUri) {
           const newUri = MetadataEventManager.createUri;
           MetadataEventManager.createUri=undefined;       

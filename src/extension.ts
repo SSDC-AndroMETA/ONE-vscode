@@ -30,7 +30,7 @@ import {Logger} from './Utils/Logger';
 import { PathToHash } from './MetadataManager/pathToHash';
 
 import { MetadataEventManager } from './MetadataManager/EventManager';
-import { DummyBackendProvider } from './Dummy/DummyBackendProvider';
+import { DummyBackendProvider } from './MetadataManager/Dummy/DummyBackendProvider';
 
 /* istanbul ignore next */
 export function activate(context: vscode.ExtensionContext) {

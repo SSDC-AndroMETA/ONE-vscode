@@ -1,15 +1,15 @@
-import {Backend} from '../Backend/Backend';
-import {Command} from '../Backend/Command';
-import {Compiler} from '../Backend/Compiler';
-import {Executor} from '../Backend/Executor';
-import {Toolchain, ToolchainInfo, Toolchains} from '../Backend/Toolchain';
-import {backendRegistrationApi} from '../Backend/API'
-import {DeviceSpec} from '../Backend/Spec';
-import {Version} from '../Backend/Version';
+import {Backend} from '../../Backend/Backend';
+import {Command} from '../../Backend/Command';
+import {Compiler} from '../../Backend/Compiler';
+import {Executor} from '../../Backend/Executor';
+import {Toolchain, ToolchainInfo, Toolchains} from '../../Backend/Toolchain';
+import {backendRegistrationApi} from '../../Backend/API'
+import {DeviceSpec} from '../../Backend/Spec';
+import {Version} from '../../Backend/Version';
 import * as fs from 'fs';
 import * as cp from 'child_process';
-import {OneStorage} from '../OneExplorer/OneStorage';
-import { Metadata } from '../MetadataManager/metadataAPI';
+import {OneStorage} from '../../OneExplorer/OneStorage';
+import { Metadata } from '../metadataAPI';
 
 const which = require('which');
 
@@ -55,7 +55,7 @@ class DummyCompiler implements Compiler {
     // return array;
   }
   prerequisitesForGetToolchains(): Command {
-    return new Command('prerequisitesForGetToolchains');
+    return new Command('');
   }
 }
 
@@ -73,10 +73,10 @@ class DummyExecutor implements Executor {
     return array;
   }
   runInference(_modelPath: string, _options?: string[] | undefined): Command {
-    return new Command('runInference');
+    return new Command('');
   }
   require(): DeviceSpec {
-    return new DeviceSpec("hw", 'sw', undefined);
+    return new DeviceSpec('', '', undefined);
   }
 }
 
@@ -98,11 +98,9 @@ class DummyToolchain extends Toolchain {
 
 class MetadataToolchain extends Toolchain {
   run(_cfg: string): Command {
-    console.log('MetadataToolchain:: run');
     // find onecc path (can find only if it is installed from debian pkg)
     let oneccPath = which.sync('onecc', {nothrow: true});
     if (oneccPath === null) {
-      console.log('no onecc');
       // Use fixed installation path
       oneccPath = '/home/one/onecc_test/bin/onecc';
     }
@@ -116,27 +114,20 @@ class MetadataToolchain extends Toolchain {
         Metadata.setBuildInfoMap(product.path, 'cfg', cfgInfo.rawObj);
       }
       
-      const enabledStep = new Set<string>();
+      const enabledSteps = new Set<string>();
       for(let [key, value] of Object.entries(cfgInfo.rawObj)) {
-        console.log(key);
-        console.log(value);
         if(key === 'onecc') {
           for(let [step, isEnabled] of Object.entries(value)) {
             if(isEnabled === 'True') {
-              console.log(step,"added");
-              enabledStep.add(step);
+              enabledSteps.add(step);
             }
           }
-        } else if(enabledStep.has(key)) {
+        } else if(enabledSteps.has(key)) {
           /* eslint-disable */
-          console.log(value['input_path']);
-          console.log(value['output_path']);
           const inputPath = value['input_path'];
           const outputPath = value['output_path'];
           // FIXME: consider when the input path and the output path is same
           if(inputPath && outputPath && inputPath !== outputPath) {
-            // TODO: set relation
-            console.log('set relation info map')
             Metadata.setRelationInfoMap(outputPath, inputPath);
             if(outputPath.split('.').pop() === 'circle') {
               Metadata.setRelationInfoMap(outputPath+'.log', outputPath);
@@ -165,8 +156,6 @@ class MetadataToolchain extends Toolchain {
 export class DummyBackendProvider {
   public static register() {
     const backend = new DummyBackend();
-    // const backRegExt = vscode.extensions.getExtension('Samsung.one-vscode');
-    // backRegExt?.exports(backend);
     backendRegistrationApi().registerBackend(backend);
   }
 }

@@ -133,9 +133,9 @@ export class Metadata{
         const path = vscode.workspace.asRelativePath(uri);
         const info = this._buildInfoMap.get(path);
         if (info) {
-            metadata['oneccVersion'] = info['onecc'];
-            metadata['toolchainVersion'] = info['toolchain']?.version?.str();
-            metadata['cfgSettings'] = info['cfg'];
+            metadata['onecc-version'] = info['onecc'];
+            metadata['toolchain-version'] = info['toolchain']?.version?.str();
+            metadata['cfg-settings'] = info['cfg'];
         }
 
         this._buildInfoMap.delete(path);

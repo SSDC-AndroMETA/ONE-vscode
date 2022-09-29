@@ -277,7 +277,7 @@ export class MetadataEventManager {
 
         let data=metadata[keyList[keyList.length-1]];
         if(keyResult.length){ data=metadata[keyResult[0]]; }
-        else {data["isDeleted"]=false;}
+        else {data["is-deleted"]=false;}
 
         //data update
         const stats: any = await Metadata.getStats(uri);

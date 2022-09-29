@@ -66,14 +66,12 @@ export class MetadataEventManager {
     let registrations = [
       provider.fileWatcher.onDidChange(async uri => {
         provider.refresh('Change'); // test code
-        console.log('onDidChange  '+uri.fsPath);
         if(workspaceRoot){ await provider.changeEvent(uri);}
       }),
       provider.fileWatcher.onDidDelete(async uri => { // To Semi Jeong
         // FIXME: declare PathToHash instance outside of the function (i.e. make instance member variable)
         const instance = await PathToHash.getInstance();
         if (!instance.exists(uri)) {{return;}}
-        console.log('onDidDelete::', uri); provider.refresh('Delete'); // test code
         // const path = uri.path;
         if (MetadataEventManager.createUri) {
           const newUri = MetadataEventManager.createUri;
@@ -100,7 +98,6 @@ export class MetadataEventManager {
       }),
       provider.fileWatcher.onDidCreate(async uri => {
         provider.refresh('Create'); // test code
-        console.log('onDidCreate  '+uri.fsPath);
         MetadataEventManager.createUri=uri;
 
         const instance= await PathToHash.getInstance();
@@ -147,7 +144,7 @@ export class MetadataEventManager {
     //(2) deactivate changed hash object
     let metadata: any = await Metadata.getMetadata(beforehash);
     if(Object.keys(metadata).length !== 0 && metadata[relativePath]) {
-        metadata[relativePath]["isDeleted"] = true;
+        metadata[relativePath]["is-deleted"] = true;
         await Metadata.setMetadata(beforehash, metadata);
     }
 
@@ -171,28 +168,17 @@ export class MetadataEventManager {
 
     const relativePath = vscode.workspace.asRelativePath(uri);
     const filename: any = relativePath.split('/').pop();
-    const stats: any = await MetadataEventManager.getStats(uri);
+    const stats: any = await Metadata.getStats(uri);
 
     metadata[relativePath] = {};
     metadata[relativePath]["name"] = filename;
 
-    metadata[relativePath]["fileExtension"] = filename.split(".").at(-1);
+    metadata[relativePath]["file-extension"] = filename.split(".").at(-1);
     metadata[relativePath]["createTime"] = stats.birthtime;
-    metadata[relativePath]["modifiedTime"] = stats.mtime;
-    metadata[relativePath]["isDeleted"] = false;
+    metadata[relativePath]["modified-time"] = stats.mtime;
+    metadata[relativePath]["is-deleted"] = false;
 
     return metadata;
-  }
-  
-  public static getStats(uri:vscode.Uri) {
-    return new Promise(function (resolve, reject) {
-      fs.stat(uri.fsPath, function (err, stats) {
-        if (err) {
-          return reject(err);
-        }
-        return resolve(stats);
-      });
-    });
   }
 
   async createDirEvent(uri:vscode.Uri){
@@ -218,40 +204,40 @@ export class MetadataEventManager {
     if(Object.keys(metadata).length !== 0){ // metadata exist
       if(metadata[relPath]){
 
-        if (!metadata[relPath]["isDeleted"]) {return;} // path already activate. ignore this case
-        metadata[relPath]["isDeleted"]=false;  // path deactive > activate    
+        if (!metadata[relPath]["is-deleted"]) {return;} // path already activate. ignore this case
+        metadata[relPath]["is-deleted"]=false;  // path deactive > activate    
       }
       else{ // for copy format
         const keyList=Object.keys(metadata);
-        const keyResult=keyList.filter(key=> !metadata[key]["isDeleted"]); // find activate. or last key of KeyList;
+        const keyResult=keyList.filter(key=> !metadata[key]["is-deleted"]); // find activate. or last key of KeyList;
 
         //data copy
 
         let data=metadata[keyList[keyList.length-1]];
         if(keyResult.length){ data=metadata[keyResult[0]]; }
-        else {data["isDeleted"]=false;}
+        else {data["is-deleted"]=false;}
 
 
         //data update
-        const stats: any = await MetadataEventManager.getStats(uri);
+        const stats: any = await Metadata.getStats(uri);
         data["name"]=uri.fsPath.split('/').pop();
-        data["fileExtension"]=uri.fsPath.split('.').pop();
-        data["createdTime"]=stats.birthtime;
-        data["modifiedTime"]=stats.mtime;
+        data["file-extension"]=uri.fsPath.split('.').pop();
+        data["created-time"]=stats.birthtime;
+        data["modified-time"]=stats.mtime;
 
         metadata[relPath]=data;
       }
     }
     else{ // metadata doesn't exist : common file        
       // const splitPath=uri.fsPath.split('.');
-      const stats: any = await MetadataEventManager.getStats(uri);
+      const stats: any = await Metadata.getStats(uri);
 
       metadata[relPath]={
         "name":uri.fsPath.split('/').pop(),
-        "fileExtension": uri.fsPath.split('.').pop(),
-        "createdTime": stats.birthtime,
-        "modifiedTime": stats.mtime,
-        "isDeleted": false,
+        "file-extension": uri.fsPath.split('.').pop(),
+        "created-time": stats.birthtime,
+        "modified-time": stats.mtime,
+        "is-deleted": false,
       };
     }
     //(6) Metadata Generation

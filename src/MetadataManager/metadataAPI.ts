@@ -65,7 +65,7 @@ export class Metadata{
             return;
         }
         const hash = await this.getFileHash(uri);
-        if(hash === undefined) {
+        if(hash === undefined || hash === '') {
             return;
         }
 
@@ -79,15 +79,16 @@ export class Metadata{
         }
         data.parent = parentHash;
         relation[hash] = data;
-
-        let parentData = relation[parentHash];
-        if(parentData === undefined) {
-            parentData = {parent: '', children: []};
+        if (parentHash !== '') {
+            let parentData = relation[parentHash];
+            if(parentData === undefined) {
+                parentData = {parent: '', children: []};
+            }
+            if(!parentData.children.includes(hash)) {
+                parentData.children.push(hash);
+            }
+            relation[parentHash] = parentData;
         }
-        if(!parentData.children.includes(hash)) {
-            parentData.children.push(hash);
-        }
-        relation[parentHash] = parentData;
 
         await this.saveJsonFile('relation', relation);
     }
@@ -145,6 +146,9 @@ export class Metadata{
     public static async getFileHash(uri: vscode.Uri) {
         const instance = await PathToHash.getInstance();
         const hash = instance.get(uri);
+        if (hash === '') {
+            console.log('why', uri);
+        }
         return hash;
     }
 
@@ -162,7 +166,6 @@ export class Metadata{
 
     // deactivate metadata
     public static async disableMetadata(input:{[key:string]:any}) {
-        console.log("Delete Start!!!!")
         const uri=input["uri"];
         const relativePath = vscode.workspace.asRelativePath(uri);
         if(!Metadata.isValidFile(uri)) {
@@ -262,7 +265,7 @@ export class Metadata{
 
     public static async moveMetadataUnderFolder(input:{[key:string]:any}) {
         const fromUri=input["fromUri"];
-        const toUri=input["toUri"]
+        const toUri = input["toUri"];
 
         // console.log(`moveMetadataUnderFolder():`, fromUri, toUri);
         const pathToHash = await PathToHash.getInstance();

@@ -64,7 +64,7 @@ class EventQueue{
   }
   
   async action(){
-    const result=await this.front().method();
+    const result = await this.front().method();
     console.log(result);
     this.dequeue();
     
@@ -78,10 +78,17 @@ class EventQueue{
 }
 
 class EventBuffer{
-  private Queue=new EventQueue();
+  private _queue=new EventQueue();
   constructor(){}
   public setEvent(request:any, input:{[key: string]:any}){
-    this.Queue.enqueue(()=>{return new Promise(resolve=>{request(input).then((res:any) =>resolve(res))})
+    this._queue.enqueue(() => {
+      return new Promise(resolve => {
+        if (Object.keys(input).length === 0) {
+          request().then((res: any) => resolve(res));
+        } else {
+          request(input).then((res: any) => resolve(res));
+        }
+      });
     },input);
   }
 }
@@ -181,7 +188,7 @@ export class MetadataEventManager {
 
     registrations.forEach(disposable => context.subscriptions.push(disposable));
   }
-  async resetOldUri(input:{[key:string]:any}){
+  async resetOldUri(){
     MetadataEventManager.createUri=undefined;
   }
 
@@ -274,9 +281,9 @@ export class MetadataEventManager {
         const keyResult=keyList.filter(key=> !metadata[key]["is-deleted"]); // find activate. or last key of KeyList;
 
         //data copy
+        let data=JSON.parse(JSON.stringify(metadata[keyList[keyList.length-1]]));
+        if(keyResult.length){data=JSON.parse(JSON.stringify(metadata[keyResult[0]]));}
 
-        let data=metadata[keyList[keyList.length-1]];
-        if(keyResult.length){ data=metadata[keyResult[0]]; }
         else {data["is-deleted"]=false;}
 
         //data update

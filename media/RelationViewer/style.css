@@ -48,7 +48,7 @@ body.vscode-light .context-menu{
 }
 
 body.vscode-light .plus-button-context-menu-header-clear-button{
-  color: red;
+  color: gray;
 }
 
 body.vscode-light .link{
@@ -88,6 +88,10 @@ body.vscode-light .plus-button:hover{
   fill: white;
 }
 
+body.vscode-light .plus-button-context-menu-header-clear-button:hover{
+  color: white;
+}
+
 html {
   width: 100%;
   height: 100%;
@@ -99,6 +103,7 @@ body {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "PingFang SC";
   /* prevent drag */
   -webkit-touch-callout: none;
   -webkit-user-select: none;
@@ -112,12 +117,6 @@ svg {
   margin-top: 30px;
   flex-shrink: 0;
 }
-
-.node circle {
-    fill: #fff;
-    stroke: steelblue;
-    stroke-width: 3px;
-  }
 
 .node rect {
   fill: #2a2929;
@@ -141,7 +140,6 @@ svg {
   
 .node text { 
   font: 15px sans-serif;
-  font-weight: bold;
   cursor: pointer;
 
   /* default drag function */
@@ -158,7 +156,8 @@ svg {
 }
 
 .file-extension-custom {
-  fill: antiquewhite;
+  fill: #e7e7e7;
+  font-weight: bold !important;
 }
 
 
@@ -185,7 +184,6 @@ svg {
   padding: 3px 6px;
   border-radius: 3px;
   width: max-content;
-  font-weight: bold;
   display: none;
 }
 
@@ -208,7 +206,7 @@ svg {
 }
 
 .plus-button:hover{
-  fill: gray;
+  fill: #888888;
 }
 
 .plus-button-context-box {
@@ -253,7 +251,7 @@ svg {
   text-align: center;
   font-weight: bold;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  color: #c3d0d7;
+  color: #e7e7e7;
   flex-grow: 1;
 }
 
@@ -262,21 +260,16 @@ svg {
   padding-right: 5px;
   cursor: pointer;
   font-size: 10px;
-  font-weight: bold;
-  color: #e54040;
+  color: gray;
 }
 
 .plus-button-context-menu-header-clear-button:hover{
-  color: #9da8b5;
+  color: #fff;
 }
-
-
 
 .plus-button-context-menu-info:hover{
-  background-color: #797e81;
+  background-color: #04395e;
 }
-
-
 
 .context-menu-line{
   box-sizing: border-box;
@@ -287,7 +280,7 @@ svg {
 }
 
 .current-node {
-  stroke: darkorange !important;
+  stroke: #d7ba7d !important;
   stroke-width: 3px !important;
 }
 
@@ -312,7 +305,7 @@ svg {
 }
 
 .context-menu-info:hover{
-  background-color: #293d54;
+  background-color: #04395e;
 }
 
 .history-main-box{
@@ -339,6 +332,10 @@ svg {
 .deleted-text-decoration{
   text-decoration: line-through !important;
   font-style: italic !important;
-  fill: red !important;
-  color: red !important;
+  fill: gray !important;
+  color: gray !important;
+}
+
+.font-bold {
+  font-weight: bold;
 }

@@ -255,8 +255,8 @@ function attachTree(relationData) {
       const fileExtensionText = mouse.path[0].getBoundingClientRect();
       hoverText.style.display = 'block';
       hoverText.innerText = `${node.data['data-list'][node.data['represent-idx']].path}`;
-      hoverText.style.left = `${window.scrollX + fileExtensionText.x - 8}px`;
-      hoverText.style.top = `${window.scrollY + fileExtensionText.y - 24}px`;
+      hoverText.style.left = `${fileExtensionText.x - 8}px`;
+      hoverText.style.top = `${fileExtensionText.y - 24}px`;
       if(node.data['data-list'][node.data['represent-idx']]['is-deleted']){
         hoverText.classList.add('deleted-text-decoration');
       }
@@ -403,6 +403,20 @@ function attachTree(relationData) {
       }
     }
   });
+  
+  historyDivHeaderClearButton.addEventListener('mouseover',(e) => {
+    const historyClearButtonRect = historyDivHeaderClearButton.getBoundingClientRect();
+    hoverText.innerText = `"Clear history"`;
+    hoverText.style.top = `${historyClearButtonRect.top - historyClearButtonRect.height - 12}px`;
+    hoverText.style.left = `${historyClearButtonRect.left - historyClearButtonRect.width - 37}px`;
+    hoverText.style.display = 'block';
+    hoverText.classList.add('font-bold');
+  });
+
+  historyDivHeaderClearButton.addEventListener('mouseout',(e) => {
+    hoverText.style.display = 'none';
+    hoverText.classList.remove('font-bold');
+  });
 
   historyDivHeaderBox.append(historyDivHeader,historyDivHeaderClearButton);
 
@@ -430,7 +444,7 @@ function attachTree(relationData) {
     });
 
     if(index === 0){
-      historyDivInfo.style.color = 'darkorange ';
+      historyDivInfo.style.color = '#d7ba7d ';
     }
     historyDiv.append(historyInfoLine,historyDivInfo);
   }
@@ -775,6 +789,32 @@ node.append("text")
       plusButtonContextMenu.style.top = `${plusButtonRect.y - plusButtonContextMenuHeight}px`;
     }
   }
+})
+.on('mouseover', (mouse, node) => {
+  const plusButton = mouse.path[0].getBoundingClientRect();
+  const hoverText = document.getElementsByClassName('hover-text')[0];
+  hoverText.style.display = 'block';
+  hoverText.innerText = `"Open the same content file list"`;
+  hoverText.style.left = `${plusButton.x - 80}px`;
+  hoverText.style.top = `${plusButton.y - 12}px`;
+  hoverText.classList.add('font-bold');
+  
+  const hoverTextRect = hoverText.getBoundingClientRect();
+  const relationBoxRect = document.getElementById('relation-box').getBoundingClientRect();
+  //If the right of the hover text is longer than the size of the current container,
+  if(relationBoxRect.right - plusButton.x < hoverTextRect.width){
+    hoverText.style.left = `${plusButton.x - hoverTextRect.width + 20}px`;
+  }
+
+  //If the top of the hover text is outside the screen,
+  if(plusButton.y  < hoverTextRect.height){
+    hoverText.style.top = `${plusButton.y + hoverTextRect.height + 10}px`;  
+  }
+
+}).on('mouseout', (mouse, node) => {
+  const hoverText = document.getElementsByClassName('hover-text')[0];
+  hoverText.style.display = 'none';
+  hoverText.classList.remove('font-bold');
 });
 }
 

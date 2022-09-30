@@ -17,7 +17,7 @@
 import * as vscode from 'vscode';
 import { Node } from '../OneExplorer/OneExplorer';
 import { MetadataViewer } from './MetadataViewer';
-
+import { getMetadata } from './example/MetadataExample';
 
 export class RelationViewerDocument implements vscode.CustomDocument {
   private readonly _uri: vscode.Uri;
@@ -53,7 +53,7 @@ export class RelationViewerDocument implements vscode.CustomDocument {
   public openView(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, fileUri:vscode.Uri) {
     let view = new MetadataViewer(panel,extensionUri);
 
-    view.initMetadataInfo();
+    view.initWebView();
     view.loadContent();
     this._metadataViwer.push(view);
 
@@ -92,7 +92,7 @@ export class MetadataViewerProvider implements
           retainContextWhenHidden: true,
         }
       }),
-      vscode.commands.registerCommand('one.metadata.showMetadataViewer', async (uri) => {
+      vscode.commands.registerCommand('one.viewer.metadata.show', async (uri) => {
         let fileUri = uri;
         //If the method is executed in the ONE Explorer, change the uri instance.
         if(uri instanceof Node){
@@ -103,8 +103,8 @@ export class MetadataViewerProvider implements
       // Add command registration here
     ];
 
-    // show metadata 보여줄 파일 확장자
-    vscode.commands.executeCommand('setContext', 'metadata.supportedFiles', [
+    // supported file extension to show relations context menu
+    vscode.commands.executeCommand('setContext', 'one.metadata.supportedFiles', [
       '.tflite',
       '.pb',
       '.onnx',
@@ -135,48 +135,4 @@ export class MetadataViewerProvider implements
       _token: vscode.CancellationToken): Promise<void> {
     document.openView(webviewPanel, this._context.extensionUri, document.uri);
   }
-}
-
-function getMetadata(path:any) {
-  return {
-    "test.log": {
-      "file-extension": "log",
-      "created-time": new Date().toLocaleString(),
-      "modified-time": new Date().toLocaleString(),
-      "is-deleted": false,
-
-      "toolchain-version": "toolchain v1.3.0",
-      "onecc-version": "1.20.0",
-      "operations": {
-        "op-total": 50,
-        "ops": {
-          "conv2d": 1,
-          "relu": 1,
-          'conv':3,
-          'spp':1,
-        }
-      },
-      "cfg-settings": {
-        "onecc": {
-          "one-import-tf": true,
-          "one-import-tflite": false,
-          "one-import-onnx": false,
-          "one-quantize":true
-        },
-        "one-import-tf": {
-          "converter-version": "v2",
-          "input-array": "a",
-          "output-array": "a",
-          "input-shapes": "1,299,299"
-        },
-        "one-quantize":{
-          "quantized-dtype":'int16',
-          "input-data-format":'list',
-          "min-percentile":'11',
-          "max-percentile":'100',
-          "mode":'movingAvg',
-        }
-      }
-    }
-  };
 }

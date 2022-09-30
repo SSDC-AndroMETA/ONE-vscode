@@ -31,7 +31,7 @@ export class MetadataViewer{
     this._extensionUri = extensionUri;
   }
 
-  public initMetadataInfo() {
+  public initWebView() {
     this._webview.options = this.getWebviewOptions();
 
     //Register for an event when you receive a message from a web view
@@ -83,7 +83,7 @@ export class MetadataViewer{
   private registerEventHandlers() {
     // Handle messages from the webview
     this._webview.onDidReceiveMessage(message => {
-      // this.handleReceiveMessage(message);
+      
     }, null, this._disposable);
   }
 

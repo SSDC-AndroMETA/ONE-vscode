@@ -20,7 +20,7 @@ import { Balloon } from '../Utils/Balloon';
 import { getNonce } from '../Utils/external/Nonce';
 import { getUri } from '../Utils/external/Uri';
 import { obtainWorkspaceRoot } from '../Utils/Helpers';
-import { getRelationData} from './RelationViewerProvider';
+import { getRelationData } from './example/RelationExample';
 
 /* istanbul ignore next */
 export class RelationViewer{
@@ -36,7 +36,7 @@ export class RelationViewer{
     this._extensionUri = extensionUri;
   }
   
-  public initRelationViewer() {
+  public initWebview() {
     this._webview.options = this.getWebviewOptions();
 
     //Register for an event when you receive a message from a web view

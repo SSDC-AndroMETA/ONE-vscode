@@ -24,6 +24,7 @@ import {Utils} from './Utils';
 class MetadataSynchronizer{
   static async run(flattenMap: any) {
 
+
     /**  1. Create metadata if pathToHash exists but does not have actual metadata files,
      *      If pathToHash exists and there is a actual metadata file, but there is no path inside, create
      *      a path and data insde
@@ -68,7 +69,6 @@ class MetadataSynchronizer{
     }
   }
 }
-
 
 /**
  * A Singleton Object

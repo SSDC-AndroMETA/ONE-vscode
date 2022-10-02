@@ -15,7 +15,9 @@
  */
 
 import * as vscode from 'vscode';
-
+import {Metadata} from './Metadata';
+import {PathToHash} from './PathToHash';
+import {readJson, saveJson} from './Utils';
 /**
  * Relation information for displaying data in relation viewer
  */
@@ -61,7 +63,7 @@ export class Relation {
    */
   public static async updateFile(uri: vscode.Uri) {
     const path = uri.path;
-    const relation = await Utils.readJson('relation');
+    const relation = await readJson('relation');
 
     const parentPath = this._childToParentMap.get(path);
     if (parentPath === undefined) {
@@ -69,12 +71,12 @@ export class Relation {
     }
     
     const pathToHash = await PathToHash.getInstance();
-    const hash = await pathToHash.get(uri);
+    const hash = await pathToHash.getHash(uri);
     if (hash === undefined || hash === '') {
       return;
     }
 
-    let parentHash = await pathToHash.get(vscode.Uri.parse(parentPath));
+    let parentHash = await pathToHash.getHash(vscode.Uri.parse(parentPath));
     if (parentHash === undefined) {
       parentHash = '';
     }
@@ -83,7 +85,7 @@ export class Relation {
     if (parentHash !== '') {
       Relation._setChild(relation, parentHash, hash);
     }
-    await Utils.saveJson('relation', relation);
+    await saveJson('relation', relation);
   }
 
   /**
@@ -133,7 +135,7 @@ export class Relation {
    */
   public static async getRelationInfo(uri: vscode.Uri) {
     const pathToHash = await PathToHash.getInstance();
-    const nowHash = pathToHash.get(uri);
+    const nowHash = pathToHash.getHash(uri);
     if (vscode.workspace.workspaceFolders === undefined) {
       return;
     }
@@ -147,7 +149,7 @@ export class Relation {
     const relationInfos: RelationInfo = {'selected': '', 'relation-data': []};
 
     // load metadata of target node
-    const nowMetadata: any = await Metadata.get(nowHash);
+    const nowMetadata: any = await Metadata.getObj(nowHash);
 
     relationInfos.selected = nowHash;
 
@@ -165,7 +167,7 @@ export class Relation {
       if (!parentHash) {
         break;
       } else {
-        const parentMetadata: any = await Metadata.get(parentHash);
+        const parentMetadata: any = await Metadata.getObj(parentHash);
 
         relationInfos['relation-data'].push({
           'id': parentHash,
@@ -185,7 +187,7 @@ export class Relation {
         break;
       } else {
         for (let i = 0; i < childrenHash.length; i++) {
-          const childMetadata: any = await Metadata.get(childrenHash[i]);
+          const childMetadata: any = await Metadata.getObj(childrenHash[i]);
 
           relationInfos['relation-data'].push({
             'id': childrenHash[i],

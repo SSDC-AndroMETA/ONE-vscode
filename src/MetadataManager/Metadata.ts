@@ -32,15 +32,15 @@ export class BuildInfo {
   private static _map = new Map<string, BuildInfoObj>();
 
   public static get(metaEntry: any, uri: vscode.Uri) {
-    const path = vscode.workspace.asRelativePath(uri);
-    const info = BuildInfo._map.get(path);
+    const relPath = vscode.workspace.asRelativePath(uri);
+    const info = BuildInfo._map.get(relPath);
     if (info) {
       metaEntry['onecc-version'] = info['onecc'];
       metaEntry['toolchain-version'] = info['toolchain'] ?.version ?.str();
       metaEntry['cfg-settings'] = info['cfg'];
     }
 
-    BuildInfo._map.delete(path);
+    BuildInfo._map.delete(relPath);
     return info;
   }
 
@@ -117,6 +117,7 @@ export class Metadata {
 
     let metaObj: any = await Metadata.getObj(hash);
     const relPath = vscode.workspace.asRelativePath(uri);
+    console.log(relPath);
 
     if (metaObj === undefined) {
       metaObj = {};

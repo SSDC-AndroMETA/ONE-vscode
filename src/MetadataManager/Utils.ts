@@ -40,3 +40,28 @@ export async function getOperators(uri: vscode.Uri) {
   });
   return operators;
 }
+
+export async function saveJson(name: string, data: any) {
+  if (vscode.workspace.workspaceFolders === undefined) {
+    return;
+  }
+
+  const uri =
+      vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, '.meta', name + '.json');
+  await vscode.workspace.fs.writeFile(uri, Buffer.from(JSON.stringify(data, null, 4), 'utf8'));
+}
+
+export async function readJson(name: string) {
+  if (vscode.workspace.workspaceFolders === undefined) {
+    return;
+  }
+
+  const uri =
+      vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, '.meta', name + '.json');
+  if (!fs.existsSync(uri.fsPath)) {
+    await vscode.workspace.fs.writeFile(uri, Buffer.from(JSON.stringify({}, null, 4), 'utf8'));
+    return {};
+  }
+  const json: any = JSON.parse(Buffer.from(await vscode.workspace.fs.readFile(uri)).toString());
+  return json;
+}

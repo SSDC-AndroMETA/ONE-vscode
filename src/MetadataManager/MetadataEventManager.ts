@@ -24,7 +24,7 @@ import {Logger} from '../Utils/Logger';
 import {BuildInfo, Metadata} from './Metadata';
 import {PathToHash} from './PathToHash';
 import {Relation} from './Relation';
-import {isValidFile} from './utils';
+import {isValidFile} from './Utils';
 
 class MetadataEventQueue {
   private inProgress: boolean = false;
@@ -127,10 +127,8 @@ export class MetadataEventManager {
 
     let registrations = [
       manager.fileWatcher.onDidChange(async uri => {
-        if (!manager.pathToHash) {
-          manager.pathToHash = await PathToHash.getInstance();
-        }
-        const caseFlag = manager.pathToHash.get(uri);
+        const pathToHash = await PathToHash.getInstance();
+        const caseFlag = pathToHash.getHash(uri);
         if (!caseFlag) {
           Logger.info('Metadata Manager', 'Unsupervised directory/file have been changed');
           return;
@@ -139,10 +137,8 @@ export class MetadataEventManager {
       }),
       manager.fileWatcher.onDidDelete(async uri => {
         const toUri = manager.didCreateUri;
-        if (!manager.pathToHash) {
-          manager.pathToHash = await PathToHash.getInstance();
-        }
-        const caseFlag = manager.pathToHash.get(uri);
+        const pathToHash = await PathToHash.getInstance();
+        const caseFlag = pathToHash.getHash(uri);
         if (!caseFlag) {
           if (toUri) {
             Logger.info('Metadata Manager', 'Unsupervised directory/file have been renamed/moved');
@@ -174,18 +170,14 @@ export class MetadataEventManager {
       }),
       manager.fileWatcher.onDidCreate(async uri => {
         manager.didCreateUri = uri;
-        if (!manager.pathToHash) {
-          manager.pathToHash = await PathToHash.getInstance();
-        }
-
-        const caseFlag = manager.pathToHash.get(uri);
+        const pathToHash = await PathToHash.getInstance();
+        const caseFlag = pathToHash.getHash(uri);
         if (fs.statSync(uri.fsPath).isDirectory()) {
           // case 1. [Dir]  Copy with files > Serch all the file in the Dir
           manager.eventBuffer.setEvent(manager.createDirEvent, {'uri': uri});
         } else if (isValidFile(uri)) {
           if (caseFlag) {
             // case 2. [File] Contents change event in Ubuntu terminal (already file exists but call
-            // create event)
             manager.eventBuffer.setEvent(manager.changeFileEvent, {'uri': uri});
           } else {
             // case 3. [File] File generation event
@@ -207,49 +199,47 @@ export class MetadataEventManager {
   }
 
   async changeFileEvent(input: {[key: string]: any}) {
-    // TO BE IMPLEMENTED
+
     const uri = input['uri'];
     const relPath = vscode.workspace.asRelativePath(uri);
+    const pathToHash = await PathToHash.getInstance();
 
-    if (this.pathToHash) {
-      // case 1. [File] Contents change event
-      //(1) get beforehash and set afterhash
-      const fromHash: string = this.pathToHash.get(uri);
+    // case 1. [File] Contents change event
+    //(1) get beforehash and set afterhash
+    const fromHash: string = pathToHash.getHash(uri);
+    //(2) deactivate changed hash object
+    await Metadata.disable(uri, fromHash);
 
-      //(2) deactivate changed hash object
-      await Metadata.disable(uri, fromHash);
+    //(3) change pathToHash
+    await pathToHash.add(uri);
+    const toHash: string = pathToHash.getHash(uri);
 
-      //(3) change pathToHash
-      await this.pathToHash.add(uri);
-      const toHash: string = this.pathToHash.get(uri);
+    //(4) get metaObj from hash
+    let metaObj = await Metadata.getObj(toHash);
+    console.log('e');
+    //(5) Metadata copy : metaObj exists, metaEntry doesn't exist
+    if (Object.keys(metaObj).length !== 0 && !metaObj[relPath]) {
+      const keyList = Object.keys(metaObj);
+      const keyResult = keyList.filter(
+          key => !metaObj[key]['is-deleted']);  // find activate or last key of KeyList;
 
-      //(4) get metaObj from hash
-      let metaObj = await Metadata.getObj(toHash);
-
-      //(5) Metadata copy : metaObj exists, metaEntry doesn't exist
-      if (Object.keys(metaObj).length !== 0 && !metaObj[relPath]) {
-        const keyList = Object.keys(metaObj);
-        const keyResult = keyList.filter(
-            key => !metaObj[key]['is-deleted']);  // find activate or last key of KeyList;
-
-        // data deep copy
-        let metaEntry = JSON.parse(JSON.stringify(metaObj[keyList[keyList.length - 1]]));
-        if (keyResult.length !== 0) {
-          metaEntry = JSON.parse(JSON.stringify(metaObj[keyResult[0]]));
-        }
-
-        metaObj[relPath] = metaEntry;
-        Metadata.setObj(toHash, metaObj);
+      // data deep copy
+      let metaEntry = JSON.parse(JSON.stringify(metaObj[keyList[keyList.length - 1]]));
+      if (keyResult.length !== 0) {
+        metaEntry = JSON.parse(JSON.stringify(metaObj[keyResult[0]]));
       }
 
-      //(6) create or update new hash object
-      await Metadata.createDefault(uri, toHash);
-
-      let metaEntry = await Metadata.getEntry(uri, toHash);
-      metaEntry = BuildInfo.get(metaEntry, uri);
-      await Relation.updateFile(uri);
-      await Metadata.setEntry(uri, toHash, metaEntry);
+      metaObj[relPath] = metaEntry;
+      Metadata.setObj(toHash, metaObj);
     }
+
+    //(6) create or update new hash object
+    await Metadata.createDefault(uri, toHash);
+
+    let metaEntry = await Metadata.getEntry(uri, toHash);
+    metaEntry = BuildInfo.get(metaEntry, uri);
+    await Relation.updateFile(uri);
+    await Metadata.setEntry(uri, toHash, metaEntry);
   }
 
   async createDirEvent(input: {[key: string]: any}) {
@@ -266,53 +256,55 @@ export class MetadataEventManager {
 
   async createFileEvent(input: {[key: string]: any}) {
     const uri = input['uri'];
+
     const relPath = vscode.workspace.asRelativePath(uri);
 
-    if (this.pathToHash) {
-      //(1) insert PathToHash
-      await this.pathToHash.add(uri);
-      const hash: string = this.pathToHash.get(uri);
-
-      //(2) get metaObj from hash
-      let metaObj = await Metadata.getObj(hash);
-
-      //(3) Metadata copy : metaObj exists, metaEntry doesn't exist
-      if (Object.keys(metaObj).length !== 0 && !metaObj[relPath]) {
-        const keyList = Object.keys(metaObj);
-        const keyResult = keyList.filter(
-            key => !metaObj[key]['is-deleted']);  // find activate or last key of KeyList;
-
-        // data deep copy
-        let metaEntry = JSON.parse(JSON.stringify(metaObj[keyList[keyList.length - 1]]));
-        if (keyResult.length !== 0) {
-          metaEntry = JSON.parse(JSON.stringify(metaObj[keyResult[0]]));
-        }
-
-        metaObj[relPath] = metaEntry;
-        Metadata.setObj(hash, metaObj);
+    const pathToHash = await PathToHash.getInstance();
+    //(1) insert PathToHash
+    await pathToHash.add(uri);
+    const hash: string = pathToHash.getHash(uri);
+    console.log('at');
+    //(2) get metaObj from hash
+    let metaObj = await Metadata.getObj(hash);
+    console.log('bt');
+    //(3) Metadata copy : metaObj exists, metaEntry doesn't exist
+    if (Object.keys(metaObj).length !== 0 && !metaObj[relPath]) {
+      const keyList = Object.keys(metaObj);
+      const keyResult = keyList.filter(
+          key => !metaObj[key]['is-deleted']);  // find activate or last key of KeyList;
+          console.log('ct');
+      // data deep copy
+      let metaEntry = JSON.parse(JSON.stringify(metaObj[keyList[keyList.length - 1]]));
+      if (keyResult.length !== 0) {
+        metaEntry = JSON.parse(JSON.stringify(metaObj[keyResult[0]]));
       }
-
-      //(6) create or update new hash object
-      await Metadata.createDefault(uri, hash);
-
-      let metaEntry = await Metadata.getEntry(uri, hash);
-      metaEntry = BuildInfo.get(metaEntry, uri);
-      await Relation.updateFile(uri);
-      await Metadata.setEntry(uri, hash, metaEntry);
+      console.log('kt');
+      metaObj[relPath] = metaEntry;
+      Metadata.setObj(hash, metaObj);
     }
+    console.log('pt');
+
+    //(6) create or update new hash object
+    await Metadata.createDefault(uri, hash);
+    console.log('zt');
+
+    let metaEntry = await Metadata.getEntry(uri, hash);
+    metaEntry = BuildInfo.get(metaEntry, uri);
+    await Relation.updateFile(uri);
+    console.log('it');
+    await Metadata.setEntry(uri, hash, metaEntry);
   }
 
   async deleteDirEvent(input: {[key: string]: any}) {
     const uri = input['uri'];
 
     // if it is a folder, deactivate all of its child files
-    if (this.pathToHash) {
-      for (let f of this.pathToHash.getFilesUnderFolder(uri)) {
-        if (typeof (this.pathToHash.get(uri)) !== 'string') {
-          await this.deleteDirEvent({'uri': f});
-        } else if (isValidFile(f)) {
-          await this.deleteFileEvent({'uri': f});
-        }
+    const pathToHash = await PathToHash.getInstance();
+    for (let f of pathToHash.getFilesUnderFolder(uri)) {
+      if (typeof (pathToHash.getHash(uri)) !== 'string') {
+        await this.deleteDirEvent({'uri': f});
+      } else if (isValidFile(f)) {
+        await this.deleteFileEvent({'uri': f});
       }
     }
   }
@@ -324,35 +316,33 @@ export class MetadataEventManager {
       return;
     }
 
-    if (this.pathToHash) {
-      // step 1. Get hash value from pathToHash
-      const hash = this.pathToHash.get(uri);
-      if (hash === undefined) {
-        return;
-      }
-
-      // step 2. deactivate (set 'is_deleted') that path.
-      await Metadata.disable(uri, hash);
-
-      // step 3. Update pathToHash
-      this.pathToHash.delete(uri);
+    const pathToHash = await PathToHash.getInstance();
+    // step 1. Get hash value from pathToHash
+    const hash = pathToHash.getHash(uri);
+    if (hash === undefined) {
+      return;
     }
+
+    // step 2. deactivate (set 'is_deleted') that path.
+    await Metadata.disable(uri, hash);
+
+    // step 3. Update pathToHash
+    pathToHash.delete(uri);
   }
 
   async moveDirEvent(input: {[key: string]: any}) {
     const fromDirUri = input['fromUri'];
     const toDirUri = input['toUri'];
 
-    if (this.pathToHash) {
-      const uriList = await vscode.workspace.findFiles('**' + toDirUri.fsPath + '/*');
+    const pathToHash = await PathToHash.getInstance();
+    const uriList = await vscode.workspace.findFiles('**' + toDirUri.fsPath + '/*');
 
-      for (let toUri of uriList) {
-        if (isValidFile(toUri)) {
-          const fromUri = vscode.Uri.joinPath(
-              fromDirUri,
-              toUri.fsPath.substring(toUri.path.lastIndexOf(toDirUri.path) + toUri.path.length));
-          await this.moveFileEvent({'fromUri': fromUri, 'toUri': toUri});
-        }
+    for (let toUri of uriList) {
+      if (isValidFile(toUri)) {
+        const fromUri = vscode.Uri.joinPath(
+            fromDirUri,
+            toUri.fsPath.substring(toUri.path.lastIndexOf(toDirUri.path) + toUri.path.length));
+        await this.moveFileEvent({'fromUri': fromUri, 'toUri': toUri});
       }
     }
   }
@@ -362,35 +352,34 @@ export class MetadataEventManager {
 
     const fromRelPath = vscode.workspace.asRelativePath(fromUri);
 
-    if (this.pathToHash) {
-      if (isValidFile(fromUri) && !isValidFile(toUri)) {
-        // when the file is renamed from a valid file name to a invalid file name
-        // ex. a.log > a.txt
-        await this.deleteFileEvent(fromUri);
-      } else if (!isValidFile(fromUri) || !isValidFile(toUri)) {
-        return;
-      }
-
-      // 1. Get hash from pathToHash
-      const fromHash = this.pathToHash.get(fromUri);
-      if (fromHash === undefined) {
-        return;
-      }
-
-      // 2. Update pathToHash
-      this.pathToHash.delete(fromUri);
-      await this.pathToHash.add(toUri);
-      const toHash = this.pathToHash.get(toUri);
-
-      // 3. Get metadata from the old path
-      const fromMetaEntry = await Metadata.getEntry(fromUri, fromHash);
-      if (fromMetaEntry && Object.keys(fromMetaEntry[fromRelPath]).length !== 0) {
-        await Metadata.delete(fromUri, fromHash);
-        await Metadata.setEntry(toUri, toHash, fromMetaEntry);
-      }
-
-      // 4. Move metadata to the new path
-      await Metadata.createDefault(toUri, toHash);
+    const pathToHash = await PathToHash.getInstance();
+    if (isValidFile(fromUri) && !isValidFile(toUri)) {
+      // when the file is renamed from a valid file name to a invalid file name
+      // ex. a.log > a.txt
+      await this.deleteFileEvent(fromUri);
+    } else if (!isValidFile(fromUri) || !isValidFile(toUri)) {
+      return;
     }
+
+    // 1. Get hash from pathToHash
+    const fromHash = pathToHash.getHash(fromUri);
+    if (fromHash === undefined) {
+      return;
+    }
+
+    // 2. Update pathToHash
+    pathToHash.delete(fromUri);
+    await pathToHash.add(toUri);
+    const toHash = pathToHash.getHash(toUri);
+
+    // 3. Get metadata from the old path
+    const fromMetaEntry = await Metadata.getEntry(fromUri, fromHash);
+    if (fromMetaEntry && Object.keys(fromMetaEntry[fromRelPath]).length !== 0) {
+      await Metadata.delete(fromUri, fromHash);
+      await Metadata.setEntry(toUri, toHash, fromMetaEntry);
+    }
+
+    // 4. Move metadata to the new path
+    await Metadata.createDefault(toUri, toHash);
   }
 }

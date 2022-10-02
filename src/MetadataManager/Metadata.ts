@@ -30,20 +30,7 @@ interface BuildInfoObj {
 
 export class BuildInfo {
   private static _map = new Map<string, BuildInfoObj>();
-
-  public static get(metaEntry: any, uri: vscode.Uri) {
-    const relPath = vscode.workspace.asRelativePath(uri);
-    const info = BuildInfo._map.get(relPath);
-    if (info) {
-      metaEntry['onecc-version'] = info['onecc'];
-      metaEntry['toolchain-version'] = info['toolchain'] ?.version ?.str();
-      metaEntry['cfg-settings'] = info['cfg'];
-    }
-
-    BuildInfo._map.delete(relPath);
-    return info;
-  }
-
+  
   public static set(path: string, key: BuildInfoKeys, value: any) {
     const relPath = vscode.workspace.asRelativePath(path);
     let info = BuildInfo._map.get(relPath);
@@ -52,6 +39,17 @@ export class BuildInfo {
       BuildInfo._map.set(relPath, info);
     }
     info[key] = value;
+  }
+
+  public static save(metaEntry: any, uri: vscode.Uri) {
+    const relPath = vscode.workspace.asRelativePath(uri);
+    const info = BuildInfo._map.get(relPath);
+    if (info) {
+      metaEntry['onecc-version'] = info['onecc'];
+      metaEntry['toolchain-version'] = info['toolchain'] ?.version ?.str();
+      metaEntry['cfg-settings'] = info['cfg'];
+    }
+    BuildInfo._map.delete(relPath);
   }
 }
 
@@ -117,7 +115,6 @@ export class Metadata {
 
     let metaObj: any = await Metadata.getObj(hash);
     const relPath = vscode.workspace.asRelativePath(uri);
-    console.log(relPath);
 
     if (metaObj === undefined) {
       metaObj = {};
@@ -151,7 +148,7 @@ export class Metadata {
     // step 2. Check if the hash object has the deleted uri
     const relPath = vscode.workspace.asRelativePath(uri);
     if (metaObj === undefined || metaObj[relPath] === undefined ||
-        Object.keys(metaObj[relPath]).length !== 0) {
+        Object.keys(metaObj[relPath]).length === 0) {
       return;
     }
 

@@ -14,13 +14,15 @@
  * limitations under the License.
  */
 
+import * as flatbuffers from 'flatbuffers';
 import * as fs from 'fs';
 import * as vscode from 'vscode';
 
 import {ToolchainInfo} from '../Backend/Toolchain';
+import * as Circle from '../CircleEditor/circle_schema_generated';
 import {obtainWorkspaceRoot} from '../Utils/Helpers';
 
-import {getStats, isValidFile} from './Utils';
+import {isValidFile} from './Utils';
 
 type BuildInfoKeys = 'onecc'|'toolchain'|'cfg';
 
@@ -30,7 +32,7 @@ interface BuildInfoObj {
 
 export class BuildInfo {
   private static _map = new Map<string, BuildInfoObj>();
-  
+
   public static set(path: string, key: BuildInfoKeys, value: any) {
     const relPath = vscode.workspace.asRelativePath(path);
     let info = BuildInfo._map.get(relPath);
@@ -50,6 +52,21 @@ export class BuildInfo {
       metaEntry['cfg-settings'] = info['cfg'];
     }
     BuildInfo._map.delete(relPath);
+  }
+}
+
+export class Operator {
+  public static async get(uri: vscode.Uri) {
+    if (!uri.fsPath.endsWith('.circle')) {
+      return [];
+    }
+    const bytes = new Uint8Array(await vscode.workspace.fs.readFile(uri));
+    const buf = new flatbuffers.ByteBuffer(bytes);
+    const model = Circle.Model.getRootAsModel(buf).unpack();
+    const operators = model.operatorCodes.map((operator) => {
+      Circle.BuiltinOperator[operator.deprecatedBuiltinCode];
+    });
+    return operators;
   }
 }
 

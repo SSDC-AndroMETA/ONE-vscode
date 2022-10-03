@@ -151,7 +151,7 @@ export class Metadata {
     // step 2. Check if the hash object has the deleted uri
     const relPath = vscode.workspace.asRelativePath(uri);
     if (metaObj === undefined || metaObj[relPath] === undefined ||
-        Object.keys(metaObj[relPath]).length !== 0) {
+        Object.keys(metaObj[relPath]).length === 0) {
       return;
     }
 

@@ -125,8 +125,7 @@ export class Metadata {
     }
 
     const filename: any = relPath.split('/').pop();
-    const stats: any =
-        await getStats(vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, relPath));
+    const stats: any = fs.statSync(uri.fsPath);
 
     metaObj[relPath]['name'] = filename;
     metaObj[relPath]['file-extension'] = filename.split('.').pop();

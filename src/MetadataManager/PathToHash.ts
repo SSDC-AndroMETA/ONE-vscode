@@ -119,7 +119,10 @@ export class PathToHash {
           }
         }
       } else if (type === vscode.FileType.Directory && name !== '.meta') {
-        subMap[name] = await this.scanRecursively(vscode.Uri.joinPath(uri, '/' + name));
+        const temp = await this.scanRecursively(vscode.Uri.joinPath(uri, '/' + name));
+        if(temp !==undefined){
+          subMap[name] = temp; 
+        }
       }
     }
     if (Object.keys(subMap).length === 0) {
@@ -211,11 +214,11 @@ export class PathToHash {
     let content: any = await generateHash(uri);
     let subMap = this._map;
     let idx = 0;
-    for (let path = splitPath[idx]; idx < splitPath.length - 1; path = splitPath[++idx]) {
-      if (!subMap[path]) {
-        break;
+    for (let name = splitPath[idx]; idx < splitPath.length - 1; name = splitPath[++idx]) {
+      if (!subMap[name]) {
+        subMap[name] = {};
       }
-      subMap = subMap[path];
+      subMap = subMap[name];
     }
     if (splitPath.length - 1 === idx) {  // paths.length - 1: index of a file name
       // When all of the folder path are stored in pathToHash

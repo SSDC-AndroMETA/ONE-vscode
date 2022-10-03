@@ -96,7 +96,7 @@ class MetadataEventBuffer {
 /* istanbul ignore next */
 export class MetadataEventManager {
   private fileWatcher = vscode.workspace.createFileSystemWatcher(`**/*`);  // glob pattern
-  private eventBuffer = new MetadataEventBuffer();
+  public static eventBuffer = new MetadataEventBuffer();
   public static didCreateUri: vscode.Uri|undefined = undefined;
 
   /**
@@ -133,7 +133,7 @@ export class MetadataEventManager {
           Logger.info('Metadata Manager', 'Unsupervised directory/file have been changed');
           return;
         }
-        manager.eventBuffer.setEvent(manager.changeFileEvent, {'uri': uri});
+        MetadataEventManager.eventBuffer.setEvent(manager.changeFileEvent, {'uri': uri});
       }),
       manager.fileWatcher.onDidDelete(async uri => {
         const toUri = MetadataEventManager.didCreateUri;
@@ -154,21 +154,21 @@ export class MetadataEventManager {
           if (typeof (caseFlag) === 'string') {
             // case 1. [File]+Path      | move (delete & new)
             //console.log('moveFile');
-            manager.eventBuffer.setEvent(MetadataEventManager.moveFileEvent, {'fromUri': uri, 'toUri': toUri});
+            MetadataEventManager.eventBuffer.setEvent(MetadataEventManager.moveFileEvent, {'fromUri': uri, 'toUri': toUri});
           } else {
             // case 2. [Dir]+Path       | move > search (delete & new)
             //console.log('moveDir');
-            manager.eventBuffer.setEvent(manager.moveDirEvent, {'fromUri': uri, 'toUri': toUri});
+            MetadataEventManager.eventBuffer.setEvent(manager.moveDirEvent, {'fromUri': uri, 'toUri': toUri});
           }
         } else {
           if (typeof (caseFlag) === 'string') {
             // case 3. [File]+undefined | deactive
             //console.log('deleteFile');
-            manager.eventBuffer.setEvent(MetadataEventManager.deleteFileEvent, {'uri': uri});
+            MetadataEventManager.eventBuffer.setEvent(MetadataEventManager.deleteFileEvent, {'uri': uri});
           } else {
             // case 4. [Dir]+undefined  | deactive > search
             //console.log('deleteDir');
-            manager.eventBuffer.setEvent(manager.deleteDirEvent, {'uri': uri,'manager':manager});
+            MetadataEventManager.eventBuffer.setEvent(manager.deleteDirEvent, {'uri': uri,'manager':manager});
           }
         }
       }),
@@ -179,23 +179,23 @@ export class MetadataEventManager {
         if (fs.statSync(uri.fsPath).isDirectory()) {
           //console.log('createDir');
           // case 1. [Dir]  Copy with files > Serch all the file in the Dir
-          manager.eventBuffer.setEvent(manager.createDirEvent, {'uri': uri});
-        } else if (isOneExplorerTargetFile(uri)) {
+          MetadataEventManager.eventBuffer.setEvent(manager.createDirEvent, {'uri': uri});
+        } else if (isTarget(uri)) {
           if (caseFlag) {
             ////console.log('b');
             // case 2. [File] Contents change event in Ubuntu terminal (already file exists but call
-            manager.eventBuffer.setEvent(manager.changeFileEvent, {'uri': uri});
+            MetadataEventManager.eventBuffer.setEvent(manager.changeFileEvent, {'uri': uri});
           } else {
             ////console.log('d');
             // case 3. [File] File generation event
-            manager.eventBuffer.setEvent(MetadataEventManager.createFileEvent, {'uri': uri});
+            MetadataEventManager.eventBuffer.setEvent(MetadataEventManager.createFileEvent, {'uri': uri});
           }
         } else {
           ////console.log('h');
           Logger.info('Metadata Manager', 'Unsupervised directory/file have been created');
           return;
         }
-        manager.eventBuffer.setEvent(manager.resetDidCreateUri, {});
+        MetadataEventManager.eventBuffer.setEvent(manager.resetDidCreateUri, {});
       }),
     ];
 
@@ -264,11 +264,12 @@ export class MetadataEventManager {
     const uri = input['uri'];
 
     //(1) call search
-    let uriList = await vscode.workspace.findFiles('**' + uri.fsPath + '/*');
-    //console.log(uriList);
+    const relPath = vscode.workspace.asRelativePath(uri);
+    const uriList = await vscode.workspace.findFiles(`${relPath}/**/*`);
+    console.log(uriList);
     for (let uri of uriList) {
-      if (isOneExplorerTargetFile(uri)) {
-        MetadataEventManager.createFileEvent({'uri': uri});
+      if (isTarget(uri)) {
+        MetadataEventManager.eventBuffer.setEvent(MetadataEventManager.createFileEvent,{'uri': uri});
       }
     }
   }
@@ -328,7 +329,7 @@ export class MetadataEventManager {
   public static async deleteFileEvent(input: {[key: string]: any}) {
     const uri = input['uri'];
     ////console.log('aa');
-    if (!isOneExplorerTargetFile(uri)) {
+    if (!isTarget(uri)) {
       return;
     }
     ////console.log('aa=');
@@ -347,6 +348,7 @@ export class MetadataEventManager {
 
     // step 3. Update pathToHash
     await pathToHash.delete(uri);
+    console.log(pathToHash);
     ////console.log('opa');
   }
 
@@ -357,13 +359,15 @@ export class MetadataEventManager {
     const pathToHash = await PathToHash.getInstance();
     const toRelPath = vscode.workspace.asRelativePath(toDirUri);
     const uriList = await vscode.workspace.findFiles(`${toRelPath}/**/*`);
+
     console.log(uriList);
 
     for (let toUri of uriList) {
+      console.log(toUri);
       const toPath=toUri.path;
       const fromUri= vscode.Uri.joinPath(fromDirUri, toPath.substring(toPath.lastIndexOf(toDirUri.path) + toDirUri.path.length));
       if(typeof (pathToHash.getHash(fromUri)) === 'string'){
-        MetadataEventManager.moveFileEvent({'fromUri': fromUri, 'toUri': toUri});
+        MetadataEventManager.eventBuffer.setEvent(MetadataEventManager.moveFileEvent,{'fromUri': fromUri, 'toUri': toUri});
       }
     }
   }
@@ -372,15 +376,18 @@ export class MetadataEventManager {
     const toUri = input['toUri'];
 
     const fromRelPath = vscode.workspace.asRelativePath(fromUri);
-    //console.log('1');
+    // console.log('1');
     const pathToHash = await PathToHash.getInstance();
-    if (isOneExplorerTargetFile(fromUri) && !isOneExplorerTargetFile(toUri)) {
+    const isFromUriTarget = isTarget(fromUri);
+    const isToUriTarget = isTarget(toUri);
+    if (isFromUriTarget && !isToUriTarget) {
       // when the file is renamed from a valid file name to a invalid file name
       // ex. a.log > a.txt
-      await MetadataEventManager.deleteFileEvent(fromUri);
-      //console.log('2');
-    } else if (!isOneExplorerTargetFile(fromUri) || !isOneExplorerTargetFile(toUri)) {
-      //console.log('3');
+      await MetadataEventManager.deleteFileEvent({uri: fromUri});
+      // console.log('2');
+      return;
+    } else if (!isFromUriTarget || !isToUriTarget) {
+      // console.log('3');
       return;
     }
 
@@ -417,4 +424,9 @@ export class MetadataEventManager {
     await Metadata.createDefault(toUri, toHash);
     //console.log('15');
   }
+}
+
+function isTarget(uri: vscode.Uri) {
+  const relPath = vscode.workspace.asRelativePath(uri);
+  return isOneExplorerTargetFile(uri) && relPath.split('/').every(p => p !== '.meta');
 }

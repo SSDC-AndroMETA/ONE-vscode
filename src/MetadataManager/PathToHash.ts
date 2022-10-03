@@ -192,7 +192,9 @@ export class PathToHash {
    * @returns A list of string hashs. An emtpy list if it's not a directory or is an empty
    *     directory.
    */
-  getAllHashesUnderFolder(uri: vscode.Uri) {
+   getAllHashesUnderFolder(uri: vscode.Uri) {
+    console.log('getAllHashesUnderFolder');
+    console.log(uri);
     const folder = this.getHash(uri);
     const files: vscode.Uri[] = [];
     if (typeof (folder) === 'string') {
@@ -200,9 +202,18 @@ export class PathToHash {
       return files;
     }
     for (const name in folder) {
-      files.push(vscode.Uri.joinPath(uri, name));
+      if (typeof (folder[name]) === 'string') {
+        console.log(name);
+        files.push(vscode.Uri.joinPath(uri, name));
+      } else {
+        this.getAllHashesUnderFolder(vscode.Uri.joinPath(uri, name)).forEach(f => {
+          console.log(f);
+          files.push(f);
+        });
+      }
     }
-
+    console.log('uri',uri);
+    console.log('files',files);
     return files;
   }
 

@@ -61,8 +61,8 @@ class MetadataSynchronizer{
         const hash = file[0] + hashFile[0].split('.')[0];
         for (const path in metaObj) {
           if(flattenMap[path] === undefined){
-            const uri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, path)
-            Metadata.disable(uri, hash);
+            const uri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, path);
+            await Metadata.disable(uri, hash);
           }
         }
       }
@@ -111,13 +111,13 @@ export class PathToHash {
       const name: string = file[0];
       const type: number = file[1];
 
-      if (type === 1) {
+      if (type === 1) {  // TODO: .model .cfg .circle .log 아니면 제외(.txt파일의 메타데이터가 생성되네요)
         subMap[name] = await generateHash(vscode.Uri.joinPath(uri, '/' + name));
       } else if (type === 2 && name !== '.meta') {
         subMap[name] = await this.scanRecursively(vscode.Uri.joinPath(uri, '/' + name));
       }
     }
-    if(subMap === {}) {
+    if(subMap === {}) {  // FIXME: JavaScript는 값이 아닌 참조로 개체를 비교하므로 이 조건은 항상 'false'을(를) 반환합니다.
       return;
     }
 

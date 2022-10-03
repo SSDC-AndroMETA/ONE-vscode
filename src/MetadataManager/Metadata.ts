@@ -14,13 +14,15 @@
  * limitations under the License.
  */
 
+import * as flatbuffers from 'flatbuffers';
 import * as fs from 'fs';
 import * as vscode from 'vscode';
 
 import {ToolchainInfo} from '../Backend/Toolchain';
+import * as Circle from '../CircleEditor/circle_schema_generated';
 import {obtainWorkspaceRoot} from '../Utils/Helpers';
 
-import {getStats, isValidFile} from './Utils';
+import {isValidFile} from './Utils';
 
 type BuildInfoKeys = 'onecc'|'toolchain'|'cfg';
 
@@ -31,19 +33,6 @@ interface BuildInfoObj {
 export class BuildInfo {
   private static _map = new Map<string, BuildInfoObj>();
 
-  public static get(metaEntry: any, uri: vscode.Uri) {
-    const relPath = vscode.workspace.asRelativePath(uri);
-    const info = BuildInfo._map.get(relPath);
-    if (info) {
-      metaEntry['onecc-version'] = info['onecc'];
-      metaEntry['toolchain-version'] = info['toolchain'] ?.version ?.str();
-      metaEntry['cfg-settings'] = info['cfg'];
-    }
-
-    BuildInfo._map.delete(relPath);
-    return info;
-  }
-
   public static set(path: string, key: BuildInfoKeys, value: any) {
     const relPath = vscode.workspace.asRelativePath(path);
     let info = BuildInfo._map.get(relPath);
@@ -52,6 +41,32 @@ export class BuildInfo {
       BuildInfo._map.set(relPath, info);
     }
     info[key] = value;
+  }
+
+  public static save(metaEntry: any, uri: vscode.Uri) {
+    const relPath = vscode.workspace.asRelativePath(uri);
+    const info = BuildInfo._map.get(relPath);
+    if (info) {
+      metaEntry['onecc-version'] = info['onecc'];
+      metaEntry['toolchain-version'] = info['toolchain'] ?.version ?.str();
+      metaEntry['cfg-settings'] = info['cfg'];
+    }
+    BuildInfo._map.delete(relPath);
+  }
+}
+
+export class Operator {
+  public static async get(uri: vscode.Uri) {
+    if (!uri.fsPath.endsWith('.circle')) {
+      return [];
+    }
+    const bytes = new Uint8Array(await vscode.workspace.fs.readFile(uri));
+    const buf = new flatbuffers.ByteBuffer(bytes);
+    const model = Circle.Model.getRootAsModel(buf).unpack();
+    const operators = model.operatorCodes.map((operator) => {
+      Circle.BuiltinOperator[operator.deprecatedBuiltinCode];
+    });
+    return operators;
   }
 }
 
@@ -117,7 +132,6 @@ export class Metadata {
 
     let metaObj: any = await Metadata.getObj(hash);
     const relPath = vscode.workspace.asRelativePath(uri);
-    console.log(relPath);
 
     if (metaObj === undefined) {
       metaObj = {};
@@ -128,8 +142,7 @@ export class Metadata {
     }
 
     const filename: any = relPath.split('/').pop();
-    const stats: any =
-        await getStats(vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, relPath));
+    const stats: any = fs.statSync(uri.fsPath);
 
     metaObj[relPath]['name'] = filename;
     metaObj[relPath]['file-extension'] = filename.split('.').pop();

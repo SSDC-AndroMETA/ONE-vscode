@@ -41,6 +41,8 @@ https://github.com/microsoft/vscode-extension-samples/blob/2556c82cb333cf65d372b
 */
 
 import * as vscode from 'vscode';
+import { Metadata } from '../MetadataManager/Metadata';
+import { PathToHash } from '../MetadataManager/PathToHash';
 import { Node } from '../OneExplorer/OneExplorer';
 import { MetadataViewer } from './MetadataViewer';
 
@@ -84,13 +86,17 @@ export class RelationViewerDocument implements vscode.CustomDocument {
     this._metadataViwer.push(view);
 
     //메타데이터 정보를 가져오는 로직(Uri 인자를 이용하면 됨)
-    const seletedMetadata = getMetadata();
+    getMetadata(fileUri).then((metadata: any) => {
+      const payload: any = {};
+      payload[metadata['name']] = metadata;
+      console.log(metadata);
+      //패널 타이틀 변경(적용되지 않음)
+      //panel.title = `Metadata: ${this._getNameFromPath(fileUri.toString())}`;
+      
+      //가져온 메타데이터를 웹뷰로 메세지를 보낸다.
+      panel.webview.postMessage({command:'showMetadata',metadata: payload});
+    });
 
-    //패널 타이틀 변경(적용되지 않음)
-    //panel.title = `Metadata: ${this._getNameFromPath(fileUri.toString())}`;
-    
-    //가져온 메타데이터를 웹뷰로 메세지를 보낸다.
-    panel.webview.postMessage({command:'showMetadata',metadata: seletedMetadata});
     
     
 
@@ -180,46 +186,9 @@ export class MetadataViewerProvider implements
   }
 }
 
-function getMetadata() {
-  return {
-    "test.log": {
-      "file_extension": "log",
-      "created_time": new Date().toLocaleString(),
-      "modified_time": new Date().toLocaleString(),
-      "deleted_time": null,
-
-      "toolchain_version": "toolchain v1.3.0",
-      "onecc_version": "1.20.0",
-      "operations": {
-        "op_total": 50,
-        "ops": {
-          "conv2d": 1,
-          "relu": 1,
-          'conv':3,
-          'spp':1,
-        }
-      },
-      "cfg_settings": {
-        "onecc": {
-          "one-import-tf": true,
-          "one-import-tflite": false,
-          "one-import-onnx": false,
-          "one-quantize":true
-        },
-        "one-import-tf": {
-          "converter_version": "v2",
-          "input_array": "a",
-          "output_array": "a",
-          "input_shapes": "1,299,299"
-        },
-        "one-quantize":{
-          "quantized_dtype":'int16',
-          "input_data_format":'list',
-          "min_percentile":'11',
-          "max_percentile":'100',
-          "mode":'movingAvg',
-        }
-      }
-    }
-  };
+async function getMetadata(uri: vscode.Uri) {
+  const instance = await PathToHash.getInstance();
+  const hash = instance.getHash(uri);
+  const entry = await Metadata.getEntry(uri, hash);
+  return entry;
 }

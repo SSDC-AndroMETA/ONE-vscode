@@ -13,44 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/*
- * Copyright (c) Microsoft Corporation
- *
- * All rights reserved.
- *
- * MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
- * associated documentation files (the "Software"), to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge, publish, distribute,
- * sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all copies or
- * substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
- * NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
- * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
-/*
-Some part of this code refers to
-https://github.com/microsoft/vscode-extension-samples/blob/2556c82cb333cf65d372bd01ac30c35ea1898a0e/custom-editor-sample/src/catScratchEditor.ts
-*/
 
 import * as vscode from 'vscode';
 import { Metadata } from '../MetadataManager/Metadata';
 import { PathToHash } from '../MetadataManager/PathToHash';
-import { Node } from '../OneExplorer/OneExplorer';
 import { MetadataViewer } from './MetadataViewer';
-
 
 export class RelationViewerDocument implements vscode.CustomDocument {
   private readonly _uri: vscode.Uri;
   private _metadataViwer: MetadataViewer[];
-  
+
 
   static async create(uri: vscode.Uri):
       Promise<RelationViewerDocument|PromiseLike<RelationViewerDocument>> {
@@ -60,7 +32,6 @@ export class RelationViewerDocument implements vscode.CustomDocument {
   private constructor(uri: vscode.Uri) {
     this._uri = uri;
     this._metadataViwer = [];
-    
   }
 
   public get uri() {
@@ -78,10 +49,10 @@ export class RelationViewerDocument implements vscode.CustomDocument {
     this._metadataViwer = [];
   }
 
-  public openView(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, fileUri:vscode.Uri) {
-    let view = new MetadataViewer(panel,extensionUri);
+  public openView(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, fileUri: vscode.Uri) {
+    let view = new MetadataViewer(panel, extensionUri);
 
-    view.initMetadataInfo();
+    view.initWebView();
     view.loadContent();
     this._metadataViwer.push(view);
 
@@ -112,14 +83,6 @@ export class RelationViewerDocument implements vscode.CustomDocument {
 
     return view;
   }
-
-  private _getNameFromPath(path: string) {
-    let idx = path.lastIndexOf("/");
-    if (idx === undefined) {
-      idx = -1;
-    }
-    return path.substring(idx + 1);
-  }
 }
 
 export class MetadataViewerProvider implements
@@ -137,25 +100,30 @@ export class MetadataViewerProvider implements
           retainContextWhenHidden: true,
         }
       }),
-      vscode.commands.registerCommand('one.metadata.showMetadataViewer', async (uri) => {
-        //만약 원에서 메서드를 실행했을 경우 uri를 변경해준다.
-        let fileUri = uri;
-        if(uri instanceof Node){
-          fileUri = uri.uri;
-        }
-        vscode.commands.executeCommand('vscode.openWith', fileUri, MetadataViewerProvider.viewType);
-      })
+      vscode.commands.registerCommand(
+          'one.viewer.metadata.showFromOneExplorer',
+          async (uri) => {
+            // If the method is executed in the ONE Explorer, change the uri instance.
+            const fileUri = uri.uri;
+
+            vscode.commands.executeCommand(
+                'vscode.openWith', fileUri, MetadataViewerProvider.viewType);
+          }),
+      vscode.commands.registerCommand(
+          'one.viewer.metadata.showFromDefaultExplorer',
+          async (uri) => {
+            const fileUri = uri;
+
+            vscode.commands.executeCommand(
+                'vscode.openWith', fileUri, MetadataViewerProvider.viewType);
+          })
       // Add command registration here
     ];
 
-    // show metadata 보여줄 파일 확장자
-    vscode.commands.executeCommand('setContext', 'metadata.supportedFiles', [
-      '.tflite',
-      '.pb',
-      '.onnx',
-      '.circle',
-      '.log'
-    ]);
+    // supported file extension to show relations context menu
+    vscode.commands.executeCommand(
+        'setContext', 'one.metadata.supportedFiles',
+        ['.tflite', '.pb', '.onnx', '.circle', '.log']);
 
     registrations.forEach(disposable => context.subscriptions.push(disposable));
   }
@@ -166,14 +134,10 @@ export class MetadataViewerProvider implements
 
   // CustomReadonlyEditorProvider implements
   async openCustomDocument(
-      uri: vscode.Uri, openContext: {backupId?: string},
+      uri: vscode.Uri, _openContext: {backupId?: string},
       _token: vscode.CancellationToken): Promise<RelationViewerDocument> {
     const document: RelationViewerDocument = await RelationViewerDocument.create(uri);
     // NOTE as a readonly viewer, there is not much to do
-
-    // TODO handle dispose
-    // TODO handle file change events
-    // TODO handle backup
 
     return document;
   }

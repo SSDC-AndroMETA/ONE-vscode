@@ -16,6 +16,7 @@
 
 import fs from 'fs';
 import * as vscode from 'vscode';
+import { SubOptionsT } from '../CircleEditor/circle_schema_generated';
 
 import {generateHash} from '../Utils/Hash';
 import {isOneExplorerTargetFile} from '../Utils/Helpers';
@@ -46,7 +47,7 @@ class MetadataSynchronizer {
   }
 
   static async deleteMetadata(flattenMap: any) {
-    if (vscode.workspace.workspaceFolders === undefined) {
+    if (vscode.workspace.workspaceFolders === undefined || !fs.existsSync(".meta/hash_objects")) {
       return;
     }
     const baseUri =
@@ -126,7 +127,7 @@ export class PathToHash {
       }
     }
     if (Object.keys(subMap).length === 0) {
-      return;
+      return {};
     }
 
     return subMap;
@@ -193,8 +194,6 @@ export class PathToHash {
    *     directory.
    */
    getAllHashesUnderFolder(uri: vscode.Uri) {
-    console.log('getAllHashesUnderFolder');
-    console.log(uri);
     const folder = this.getHash(uri);
     const files: vscode.Uri[] = [];
     if (typeof (folder) === 'string') {
@@ -203,11 +202,9 @@ export class PathToHash {
     }
     for (const name in folder) {
       if (typeof (folder[name]) === 'string') {
-        console.log(name);
         files.push(vscode.Uri.joinPath(uri, name));
       } else {
         this.getAllHashesUnderFolder(vscode.Uri.joinPath(uri, name)).forEach(f => {
-          console.log(f);
           files.push(f);
         });
       }
@@ -254,16 +251,19 @@ export class PathToHash {
     let subMap = this._map;
     const splitPath = vscode.workspace.asRelativePath(uri).split('/');
 
+    console.log("delete");
     for (let i = 0, name = splitPath[i]; i < splitPath.length - 1; name = splitPath[++i]) {
       if (!subMap) {
         return;
       }
       subMap = subMap[name];
     }
+    console.log("test",subMap);
     if (subMap === undefined) {
       // already deleted
       return;
     }
+    console.log("test delete",subMap[splitPath[splitPath.length-1]]);
     delete subMap[splitPath[splitPath.length - 1]];
     if (splitPath.length > 1) {
       await this.deleteEmptyDirPath(this._map, splitPath, 0);

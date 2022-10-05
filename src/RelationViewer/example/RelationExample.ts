@@ -15,7 +15,7 @@
  */
 
 /*
-NOTE this is example logic is that you can get sample relation data
+NOTE this is example logic that you can get sample relation data
 TODO Replace this sample logic into real logic
 */
 export function getRelationData(path: any) {

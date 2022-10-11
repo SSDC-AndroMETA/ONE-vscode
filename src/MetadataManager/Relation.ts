@@ -46,7 +46,6 @@ interface NodeData {
  * Relation is a class which controls relation data of the base models and production files.
  */
 export class Relation {
-  constructor() {}
   /**
    * A map to save relation bewteen a child path and a parent path
    */
@@ -188,43 +187,36 @@ export class Relation {
 
     // find parents node
     let parentHash: string = relJSON[nowHash].parent;
-    while (true) {
-      if (!parentHash) {
-        break;
-      } else {
-        const parentMetadata: any = await Metadata.getObj(parentHash);
+    while (parentHash) {
+      const parentMetadata: any = await Metadata.getObj(parentHash);
 
-        relationInfos['relation-data'].push({
-          'id': parentHash,
-          'parent': relJSON[parentHash].parent,
-          'represent-idx': 0,
-          'data-list': Relation._getNodeDataList(parentMetadata)
-        });
-        parentHash = relJSON[parentHash].parent;
-      }
+      relationInfos['relation-data'].push({
+        'id': parentHash,
+        'parent': relJSON[parentHash].parent,
+        'represent-idx': 0,
+        'data-list': Relation._getNodeDataList(parentMetadata)
+      });
+      parentHash = relJSON[parentHash].parent;
     }
 
     // find child node
     let childrenHash: string[] = relJSON[nowHash].children;
-    while (true) {
+    while (childrenHash.length !== 0) {
       let hashs: string[] = [];
-      if (childrenHash.length === 0) {
-        break;
-      } else {
-        for (let i = 0; i < childrenHash.length; i++) {
-          const childMetadata: any = await Metadata.getObj(childrenHash[i]);
+      
+      for (let i = 0; i < childrenHash.length; i++) {
+        const childMetadata: any = await Metadata.getObj(childrenHash[i]);
 
-          relationInfos['relation-data'].push({
-            'id': childrenHash[i],
-            'parent': relJSON[childrenHash[i]].parent,
-            'represent-idx': 0,
-            'data-list': Relation._getNodeDataList(childMetadata)
-          });
-          hashs = [...relJSON[childrenHash[i]].children];
-        }
-
-        childrenHash = hashs;
+        relationInfos['relation-data'].push({
+          'id': childrenHash[i],
+          'parent': relJSON[childrenHash[i]].parent,
+          'represent-idx': 0,
+          'data-list': Relation._getNodeDataList(childMetadata)
+        });
+        hashs = [...relJSON[childrenHash[i]].children];
       }
+
+      childrenHash = hashs;
     }
 
     console.log('qwewqerqwe');
@@ -263,7 +255,7 @@ async function saveJson(name: string, data: any) {
   }
 
   const uri =
-      vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, '.meta', name + '.json');
+      vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, '.one-vscode/info/', name + '.json');
   await vscode.workspace.fs.writeFile(uri, Buffer.from(JSON.stringify(data, null, 4), 'utf8'));
 }
 
@@ -274,7 +266,7 @@ async function readJson(name: string) {
   }
 
   const uri =
-      vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, '.meta', name + '.json');
+      vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, '.one-vscode/info/', name + '.json');
   if (!fs.existsSync(uri.fsPath)) {
     await vscode.workspace.fs.writeFile(uri, Buffer.from(JSON.stringify({}, null, 4), 'utf8'));
     return {};

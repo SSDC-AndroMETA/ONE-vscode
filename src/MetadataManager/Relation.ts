@@ -136,8 +136,6 @@ export class Relation {
    * @returns `RelationInfo` of the file
    */
   public static async getRelationInfo(uri: vscode.Uri) {
-    console.log('실행됨');
-    console.log(uri);
     const pathToHash = await PathToHash.getInstance();
     const nowHash = pathToHash.getHash(uri);
     if (vscode.workspace.workspaceFolders === undefined) {
@@ -149,13 +147,9 @@ export class Relation {
 
     // Return Object generation
     const relationInfos: RelationInfo = {'selected': '', 'relation-data': []};
-    console.log(nowHash);
-    console.log('여긴옴');
 
     // load metadata of target node
     const nowMetadata: any = await Metadata.getObj(nowHash);
-    console.log('여긴 왜 안되');
-    console.log(nowMetadata);
     let nowIdx = 0;
 
     const relJSON: any = await readJson('relation');
@@ -167,7 +161,6 @@ export class Relation {
       }
     }
     relationInfos.selected = nowHash;
-    console.log('relJSON', relJSON);
     if (relJSON[nowHash] === undefined) {
       relationInfos['relation-data'].push({
         'id': nowHash,
@@ -203,7 +196,7 @@ export class Relation {
     let childrenHash: string[] = relJSON[nowHash].children;
     while (childrenHash.length !== 0) {
       let hashs: string[] = [];
-      
+
       for (let i = 0; i < childrenHash.length; i++) {
         const childMetadata: any = await Metadata.getObj(childrenHash[i]);
 
@@ -219,15 +212,13 @@ export class Relation {
       childrenHash = hashs;
     }
 
-    console.log('qwewqerqwe');
-    console.log(relationInfos);
     return relationInfos;
   }
 
   /**
    * Get a list of the entire data from metadata
    * @param metadata A map containing data to be listed
-   * @returns
+   * @returns A list of `NodeData` of the metadata
    */
   private static _getNodeDataList(metadata: any) {
     const dataList: NodeData[] = [];
@@ -249,29 +240,33 @@ export class Relation {
   }
 }
 
+/**
+ * Save the `data` into the `./.one-vscode/info/<name>.json` file
+ */
 async function saveJson(name: string, data: any) {
   if (vscode.workspace.workspaceFolders === undefined) {
     return;
   }
 
-  const uri =
-      vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, '.one-vscode/info/', name + '.json');
+  const uri = vscode.Uri.joinPath(
+      vscode.workspace.workspaceFolders[0].uri, '.one-vscode/info/', name + '.json');
   await vscode.workspace.fs.writeFile(uri, Buffer.from(JSON.stringify(data, null, 4), 'utf8'));
 }
 
+/**
+ * Read from the `./.one-vscode/info/<name>.json` file
+ */
 async function readJson(name: string) {
-  console.log('readJson');
   if (vscode.workspace.workspaceFolders === undefined) {
     return;
   }
 
-  const uri =
-      vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, '.one-vscode/info/', name + '.json');
+  const uri = vscode.Uri.joinPath(
+      vscode.workspace.workspaceFolders[0].uri, '.one-vscode/info/', name + '.json');
   if (!fs.existsSync(uri.fsPath)) {
     await vscode.workspace.fs.writeFile(uri, Buffer.from(JSON.stringify({}, null, 4), 'utf8'));
     return {};
   }
   const json: any = JSON.parse(Buffer.from(await vscode.workspace.fs.readFile(uri)).toString());
-  console.log(json);
   return json;
 }

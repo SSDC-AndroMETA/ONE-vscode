@@ -53,7 +53,7 @@
 //       test('get relation information for a saved path with metadata', async function() {
 //         const childPath = testBuilder.getPath(childName, 'workspace');
 //         const parentPath = testBuilder.getPath('parent.circle', 'workspace');
-        
+
 //         const childUri = vscode.Uri.file(childPath);
 //         Relation.store(childPath, parentPath);
 //         const relInfo = await Relation.getRelationInfo(childUri);
@@ -73,7 +73,7 @@
 //       test('NEG: get relation information for a saved path without metadata', async function() {
 //         const childPath = testBuilder.getPath('child.circle', 'workspace');
 //         const parentPath = testBuilder.getPath('parent.circle', 'workspace');
-        
+
 //         const childUri = vscode.Uri.file(childPath);
 //         Relation.store(childPath, parentPath);
 //         const relInfo = await Relation.getRelationInfo(childUri);
@@ -102,7 +102,7 @@
 //     // suite('#updateFile', function() {
 
 //     // });
-    
+
 //     // suite('#getRelationInfo', function() {
 
 //     // });

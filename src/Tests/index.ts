@@ -100,7 +100,7 @@ export async function run(): Promise<void> {
   // const testFilter = "Returns parsed object";
   //
   // TODO: Enable to get string to filter from package.json
-  const testFilter = '';
+  const testFilter = 'Relation';
   const mochaOpts: Mocha.MochaOptions = {ui: 'tdd', color: true, fgrep: testFilter};
 
   const runner = new Mocha(mochaOpts);

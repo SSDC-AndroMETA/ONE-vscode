@@ -327,6 +327,11 @@
           "group": "inline"
         },
         {
+          "command": "one.viewer.relation.showFromOneExplorer",
+          "when": "view == OneExplorerView && viewItem =~ /baseModel|product/",
+          "group": "7_metadata@2"
+        },
+        {
           "command": "one.viewer.metadata.showFromOneExplorer",
           "when": "view == OneExplorerView && viewItem =~ /baseModel|product/",
           "group": "7_metadata@1"
@@ -339,8 +344,13 @@
       ],
       "explorer/context": [
         {
+          "command": "one.viewer.relation.showFromDefaultExplorer",
+          "when": "resourceExtname in one.relation.supportedFiles && !explorerResourceIsFolder",
+          "group": "7_metadata@2"
+        },
+        {
           "command": "one.viewer.metadata.showFromDefaultExplorer",
-          "when": "resourceExtname in one.metadata.supportedFiles && !explorerResourceIsFolder",
+          "when": "resourceExtname in one.relation.supportedFiles && !explorerResourceIsFolder",
           "group": "7_metadata@1"
         },
         {
@@ -412,6 +422,14 @@
         },
         {
           "command": "one.viewer.jsonTracer",
+          "when": "false"
+        },
+        {
+          "command": "one.viewer.relation.showFromDefaultExplorer",
+          "when": "false"
+        },
+        {
+          "command": "one.viewer.relation.showFromOneExplorer",
           "when": "false"
         },
         {
